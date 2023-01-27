@@ -4,70 +4,75 @@
 
 package frc.robot;
 
+import java.util.Optional;
+
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
 import com.revrobotics.CANSparkMaxLowLevel;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.SparkMaxPIDController;
-import com.revrobotics.CANSparkMax.ControlType;
-import com.revrobotics.CANSparkMax.IdleMode;
 
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
+import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
+import frc.robot.Constants.DriveTrainConstants;
+import org.photonvision.EstimatedRobotPose;
 import com.revrobotics.CANSparkMax;
 
 public class Drivetrain {
   private final CANSparkMax leftMotor = new CANSparkMax(RobotMap.MOTOR_LEFT, CANSparkMaxLowLevel.MotorType.kBrushless);
   private final CANSparkMax rightMotor = new CANSparkMax(RobotMap.MOTOR_RIGHT, CANSparkMaxLowLevel.MotorType.kBrushless);
+
   private final RelativeEncoder leftEncoder = leftMotor.getEncoder();
   private final RelativeEncoder rightEncoder = rightMotor.getEncoder();
 
-  private final SparkMaxPIDController leftController = leftMotor.getPIDController();
-  private final SparkMaxPIDController rightController = rightMotor.getPIDController();
+  private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
-  private final WPI_Pigeon2 pigeon = new WPI_Pigeon2(RobotMap.PIGEON);
+  private final DifferentialDriveKinematics kinematics =
+    new DifferentialDriveKinematics(Constants.DriveTrainConstants.kTrackWidth);
 
-  private double maxRPM = 5820;
+  private final DifferentialDrivePoseEstimator poseEstimator =
+    new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), 0.0, 0.0, new Pose2d());
 
-  private void updateControllerGains(SparkMaxPIDController controller, double kP, double kI, double kD, double kIz, double kFF, double kMaxOutput, double kMinOutput) {
-    controller.setP(kP);
-    controller.setI(kI);
-    controller.setD(kD);
-    controller.setIZone(kIz);
-    controller.setFF(kFF);
-    controller.setOutputRange(kMinOutput, kMaxOutput);
-  }
-
-  public void updateControllers(double kP, double kI, double kD, double kIz, double kFF, double kMaxOutput, double kMinOutput) {
-    updateControllerGains(leftController, kP, kI, kD, kIz, kFF, kMaxOutput, kMinOutput);
-    updateControllerGains(rightController, kP, kI, kD, kIz, kFF, kMaxOutput, kMinOutput);
-  }
+  private final PhotonCameraWrapper pcw = new PhotonCameraWrapper();
 
   public Drivetrain() {
     // Invert right motor (positive should be forward, negative backward)
     rightMotor.setInverted(true);
 
-    leftMotor.setIdleMode(IdleMode.kBrake);
-    rightMotor.setIdleMode(IdleMode.kBrake);
+    leftEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
+    rightEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
+
+    gyro.reset();
   }
 
-  public void driveVelocity(double speed, double turn) {
-    // Control velocity through built-in PID 
-    double leftRPM = (speed + turn) * maxRPM;
-    double rightRPM = (speed - turn) * maxRPM;
-    leftController.setReference(leftRPM, ControlType.kVelocity);
-    rightController.setReference(rightRPM, ControlType.kVelocity);
-
-    System.out.println("Left controller: setpoint is " + leftRPM + " RPM, currently at " + leftEncoder.getVelocity() + " RPM");
-    System.out.println("Right controller: setpoint is " + rightRPM + " RPM, currently at " + rightEncoder.getVelocity() + " RPM");
-  }
-
-  public void driveVoltage(double speed, double turn) {
+  public void drive(double speed, double turn) {
     // Positive turn turns right, negative turns left
     leftMotor.set(speed + turn);
     rightMotor.set(speed - turn);
   }
 
-  public WPI_Pigeon2 getPigeon() {
-    return pigeon;
+  /** Updates the field-relative position. */
+  public void updateOdometry() {
+    poseEstimator.update(
+            gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
+
+    // Also apply vision measurements. We use 0.3 seconds in the past as an example
+    // -- on
+    // a real robot, this must be calculated based either on latency or timestamps.
+    Optional<EstimatedRobotPose> result =
+            pcw.getEstimatedGlobalPose(poseEstimator.getEstimatedPosition());
+
+    if (result.isPresent()) {
+        EstimatedRobotPose camPose = result.get();
+        poseEstimator.addVisionMeasurement(
+                camPose.estimatedPose.toPose2d(), camPose.timestampSeconds);
+    }
+  }
+
+  public Pose2d getPose() {
+    return poseEstimator.getEstimatedPosition();
+  }
+  
+  public WPI_Pigeon2 getGyro() {
+    return gyro;
   }
 }
