@@ -27,6 +27,10 @@ public class Robot extends TimedRobot {
   private final Drivetrain drive = new Drivetrain();
   private final PIDController balancer = new PIDController(0.001, 0, 0);
 
+  Robot() {
+    super(500/1000);
+  }
+
   @Override
   public void robotInit() {
   }
@@ -56,6 +60,8 @@ public class Robot extends TimedRobot {
   PhotonCameraWrapper pcw = new PhotonCameraWrapper();
 
   RamseteController ramsete = new RamseteController(1, 0.5);
+  PIDController turnPid = new PIDController(0.05, 0, 0);
+  PIDController distancePid = new PIDController(0.05, 0, 0);
 
   @Override
   public void testPeriodic() {
@@ -79,25 +85,59 @@ public class Robot extends TimedRobot {
     Optional<EstimatedRobotPose> estimatedPose = drive.getPcw().getEstimatedGlobalPose(null);
 
     if (estimatedPose.isPresent()) {
-      Pose3d pose = estimatedPose.get().estimatedPose;
+      Pose2d pose = estimatedPose.get().estimatedPose.toPose2d();
 
-      Pose2d targetPose = new Pose2d(-10, 0, new Rotation2d(0, 180));
+      Pose2d targetPose = new Pose2d(-10, 0, new Rotation2d(Units.degreesToRadians(180)));
 
-      ChassisSpeeds speeds = ramsete.calculate(pose.toPose2d(), targetPose, 0, 0);
+      double xErr = targetPose.getX() - pose.getX();
+      double yErr = targetPose.getY() - pose.getY();
 
-      double forward = Math.sqrt(Math.pow(speeds.vxMetersPerSecond, 2) + Math.pow(speeds.vyMetersPerSecond, 2));
-      double turn = -speeds.omegaRadiansPerSecond;
+      double headingErr = Math.atan2(xErr, yErr);
 
-      if (Math.abs(forward) > 1 || Math.abs(turn) > 1) {
-        double maxSpeed = Math.max(Math.abs(forward), Math.abs(turn));
-        forward /= maxSpeed;
-        turn /= maxSpeed;
+      double turnSpeed = turnPid.calculate(headingErr, 0);
+
+      System.out.println("At (" + pose.getX() + ", " + pose.getY() + "), target is (" + targetPose.getX()
+        + ", " + targetPose.getY() + "). Heading error (angle) is " + headingErr + ", turning " + turnSpeed);
+
+      if (Math.abs(headingErr) > 0.1) {
+        System.out.println("Turning with speed " + turnSpeed);
+        drive.differentialDrive(0, turnSpeed);
+      } else {
+        double distance = Math.sqrt(xErr*xErr + yErr*yErr);
+        double driveSpeed = distancePid.calculate(distance, 0);
+        
+        System.out.println("Now closing in on distance, distance is " + distance);
+        
+        if (distance > 3) {
+          System.out.println("Driving with drive speed " + driveSpeed);
+          drive.differentialDrive(driveSpeed, 0);
+        } else {
+          double yawErr = targetPose.getRotation().getRadians()
+            - pose.getRotation().getRadians();
+          double yawCorrectionSpeed = turnPid.calculate(yawErr, 0);
+          System.out.println("Correcting yaw with speed: " + yawCorrectionSpeed);
+          drive.differentialDrive(0, yawCorrectionSpeed);
+        }
       }
 
-      System.out.print("Error is " + targetPose.minus(pose.toPose2d()) + "; ");
-      System.out.println("Driving: " + forward + ", " + turn);
 
-      drive.differentialDrive(forward, turn);
+
+
+      // ChassisSpeeds speeds = ramsete.calculate(pose.toPose2d(), targetPose, 0, 0);
+
+      // double forward = Math.sqrt(Math.pow(speeds.vxMetersPerSecond, 2) + Math.pow(speeds.vyMetersPerSecond, 2));
+      // double turn = -speeds.omegaRadiansPerSecond;
+
+      // if (Math.abs(forward) > 1 || Math.abs(turn) > 1) {
+      //   double maxSpeed = Math.max(Math.abs(forward), Math.abs(turn));
+      //   forward /= maxSpeed;
+      //   turn /= maxSpeed;
+      // }
+
+      // System.out.print("Error is " + targetPose.minus(pose.toPose2d()) + "; ");
+      // System.out.println("Driving: " + forward + ", " + turn);
+
+      // drive.differentialDrive(forward, turn);
     }
   }
 }
