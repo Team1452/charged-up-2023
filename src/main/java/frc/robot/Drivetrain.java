@@ -44,7 +44,7 @@ public class Drivetrain {
     gyro.reset();
   }
 
-  public void drive(double speed, double turn) {
+  public void differentialDrive(double speed, double turn) {
     // Positive turn turns right, negative turns left
     leftMotor.set(speed + turn);
     rightMotor.set(speed - turn);
@@ -74,5 +74,9 @@ public class Drivetrain {
   
   public WPI_Pigeon2 getGyro() {
     return gyro;
+  }
+
+  public PhotonCameraWrapper getPcw() {
+      return pcw;
   }
 }
