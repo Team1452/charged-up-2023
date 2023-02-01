@@ -30,9 +30,9 @@ import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
-  // private final Drivetrain drive = new Drivetrain(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+  private final Drivetrain drive = new Drivetrain(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
   private final PIDController balancer = new PIDController(0.001, 0, 0);
-  private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
+  // private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
   private final DoubleSolenoid solenoid = new DoubleSolenoid(
     PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
 
@@ -50,19 +50,20 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    // var speed = -Math.pow(controller.getLeftY(), 3);
-    // var rot = Math.pow(controller.getRightX(), 3);
+    // Maybe switch to SlewRateLimiter or PID for smoother control?
+    var speed = -Math.pow(controller.getLeftY(), 3);
+    var rot = Math.pow(controller.getRightX(), 3);
 
     // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
+    drive.differentialDrive(speed, rot);
 
-    arm.set(controller.getLeftY());
-    // drive.differentialDrive(speed, rot);
+    // arm.set(controller.getLeftY());
 
-    if (controller.getAButtonPressed()) {
-      solenoid.set(Value.kForward);
-    } else if (controller.getAButtonReleased()) {
-      solenoid.set(Value.kReverse);
-    }
+    // if (controller.getAButtonPressed()) {
+    //   solenoid.set(Value.kForward);
+    // } else if (controller.getAButtonReleased()) {
+    //   solenoid.set(Value.kReverse);
+    // }
   }
 
   @Override
@@ -113,7 +114,7 @@ public class Robot extends TimedRobot {
 
       double speed = -distancePid.calculate(distance, 0);
 
-      // drive.differentialDrive(speed, turn);
+      drive.differentialDrive(speed, turn);
     }
   }
 }
