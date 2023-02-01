@@ -4,25 +4,33 @@
 
 package frc.robot;
 
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
 import com.revrobotics.CANSparkMaxLowLevel;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
+import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import frc.robot.Constants.DriveTrainConstants;
 import org.photonvision.EstimatedRobotPose;
 import com.revrobotics.CANSparkMax;
 
 public class Drivetrain {
-  private final CANSparkMax leftMotor = new CANSparkMax(RobotMap.MOTOR_LEFT, CANSparkMaxLowLevel.MotorType.kBrushless);
-  private final CANSparkMax rightMotor = new CANSparkMax(RobotMap.MOTOR_RIGHT, CANSparkMaxLowLevel.MotorType.kBrushless);
+  // private final CANSparkMax leftMotor = new CANSparkMax(RobotMap.MOTOR_LEFT, CANSparkMaxLowLevel.MotorType.kBrushless);
+  // private final CANSparkMax rightMotor = new CANSparkMax(RobotMap.MOTOR_RIGHT, CANSparkMaxLowLevel.MotorType.kBrushless);
 
-  private final RelativeEncoder leftEncoder = leftMotor.getEncoder();
-  private final RelativeEncoder rightEncoder = rightMotor.getEncoder();
+  private final MotorControllerGroup left;
+  private final MotorControllerGroup right;
+
+  private final RelativeEncoder leftEncoder;
+  private final RelativeEncoder rightEncoder;
 
   private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
@@ -34,9 +42,28 @@ public class Drivetrain {
 
   private final PhotonCameraWrapper pcw = new PhotonCameraWrapper();
 
-  public Drivetrain() {
+  private final CANSparkMax[] leftMotors;
+  private final CANSparkMax[] rightMotors;
+
+  private CANSparkMax[] motorsFromIds(int[] canIds) {
+    CANSparkMax[] motors = new CANSparkMax[canIds.length];
+    for (int i = 0; i < canIds.length; i++)
+      motors[i] = new CANSparkMax(canIds[i], MotorType.kBrushless);
+    return motors;
+  }
+
+  public Drivetrain(int[] leftIds, int[] rightIds) {
+    leftMotors = motorsFromIds(leftIds);
+    rightMotors = motorsFromIds(rightIds);
+
+    left = new MotorControllerGroup(leftMotors);
+    right = new MotorControllerGroup(rightMotors);
+
+    leftEncoder = leftMotors[0].getEncoder();
+    rightEncoder = rightMotors[0].getEncoder();
+
     // Invert right motor (positive should be forward, negative backward)
-    rightMotor.setInverted(true);
+    right.setInverted(true);
 
     leftEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
@@ -46,8 +73,9 @@ public class Drivetrain {
 
   public void differentialDrive(double speed, double turn) {
     // Positive turn turns right, negative turns left
-    leftMotor.set(speed + turn);
-    rightMotor.set(speed - turn);
+    System.out.println("Setting left to: " + (speed + turn) + "; setting right to: " + (speed - turn));
+    left.set(speed + turn);
+    right.set(speed - turn);
   }
 
   /** Updates the field-relative position. */

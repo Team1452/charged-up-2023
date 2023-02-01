@@ -8,6 +8,9 @@ import java.util.Optional;
 
 import org.photonvision.EstimatedRobotPose;
 
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
@@ -19,17 +22,19 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
-  private final Drivetrain drive = new Drivetrain();
+  // private final Drivetrain drive = new Drivetrain(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
   private final PIDController balancer = new PIDController(0.001, 0, 0);
-
-  Robot() {
-    super(500/1000);
-  }
+  private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
+  private final DoubleSolenoid solenoid = new DoubleSolenoid(
+    PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
 
   @Override
   public void robotInit() {
@@ -45,12 +50,19 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    var speed = Math.pow(controller.getLeftY(), 3);
-    var rot = Math.pow(controller.getRightX(), 3);
+    // var speed = -Math.pow(controller.getLeftY(), 3);
+    // var rot = Math.pow(controller.getRightX(), 3);
 
-    System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
+    // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
 
-    drive.differentialDrive(speed, rot);
+    arm.set(controller.getLeftY());
+    // drive.differentialDrive(speed, rot);
+
+    if (controller.getAButtonPressed()) {
+      solenoid.set(Value.kForward);
+    } else if (controller.getAButtonReleased()) {
+      solenoid.set(Value.kReverse);
+    }
   }
 
   @Override
@@ -91,53 +103,17 @@ public class Robot extends TimedRobot {
 
       double xErr = targetPose.getX() - pose.getX();
       double yErr = targetPose.getY() - pose.getY();
+      
+      double target_yaw = Math.atan2(yErr, xErr);
+      double current_yaw = pose.getRotation().getRadians();
 
-      double headingErr = Math.atan2(xErr, yErr);
+      double turn = turnPid.calculate(current_yaw, target_yaw);
+      
+      double distance = Math.sqrt(xErr*xErr + yErr*yErr);
 
-      double turnSpeed = turnPid.calculate(headingErr, 0);
+      double speed = -distancePid.calculate(distance, 0);
 
-      System.out.println("At (" + pose.getX() + ", " + pose.getY() + "), target is (" + targetPose.getX()
-        + ", " + targetPose.getY() + "). Heading error (angle) is " + headingErr + ", turning " + turnSpeed);
-
-      if (Math.abs(headingErr) > 0.1) {
-        System.out.println("Turning with speed " + turnSpeed);
-        drive.differentialDrive(0, turnSpeed);
-      } else {
-        double distance = Math.sqrt(xErr*xErr + yErr*yErr);
-        double driveSpeed = distancePid.calculate(distance, 0);
-        
-        System.out.println("Now closing in on distance, distance is " + distance);
-        
-        if (distance > 3) {
-          System.out.println("Driving with drive speed " + driveSpeed);
-          drive.differentialDrive(driveSpeed, 0);
-        } else {
-          double yawErr = targetPose.getRotation().getRadians()
-            - pose.getRotation().getRadians();
-          double yawCorrectionSpeed = turnPid.calculate(yawErr, 0);
-          System.out.println("Correcting yaw with speed: " + yawCorrectionSpeed);
-          drive.differentialDrive(0, yawCorrectionSpeed);
-        }
-      }
-
-
-
-
-      // ChassisSpeeds speeds = ramsete.calculate(pose.toPose2d(), targetPose, 0, 0);
-
-      // double forward = Math.sqrt(Math.pow(speeds.vxMetersPerSecond, 2) + Math.pow(speeds.vyMetersPerSecond, 2));
-      // double turn = -speeds.omegaRadiansPerSecond;
-
-      // if (Math.abs(forward) > 1 || Math.abs(turn) > 1) {
-      //   double maxSpeed = Math.max(Math.abs(forward), Math.abs(turn));
-      //   forward /= maxSpeed;
-      //   turn /= maxSpeed;
-      // }
-
-      // System.out.print("Error is " + targetPose.minus(pose.toPose2d()) + "; ");
-      // System.out.println("Driving: " + forward + ", " + turn);
-
-      // drive.differentialDrive(forward, turn);
+      // drive.differentialDrive(speed, turn);
     }
   }
 }
