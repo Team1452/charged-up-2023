@@ -35,11 +35,12 @@ public class Robot extends TimedRobot {
 
   private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
   private final DoubleSolenoid solenoid = new DoubleSolenoid(
-    PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
+    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
 
   @Override
   public void robotInit() {
+    compressor.disable();
   }
 
   @Override
@@ -63,22 +64,31 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
+    solenoid.set(Value.kOff); // Off by default
   }
+
+  boolean pistonForward = false;
+  boolean compressorEnabled = false;
 
   @Override
   public void testPeriodic() {
     arm.set(controller.getLeftY());
 
     if (controller.getAButtonPressed()) {
-      solenoid.set(Value.kForward);
-    } else if (controller.getAButtonReleased()) {
-      solenoid.set(Value.kReverse);
+      pistonForward = !pistonForward;
+      System.out.println("Enabling solenoid: " + pistonForward);
+      if (pistonForward)
+        solenoid.set(Value.kForward);
+      else
+        solenoid.set(Value.kReverse);
     }
 
     if (controller.getBButtonPressed()) {
-      compressor.enableDigital();
-    } else if (controller.getBButtonReleased()) {
-      compressor.disable();
+      compressorEnabled = !compressorEnabled;
+      if (compressorEnabled)
+        compressor.enableDigital();
+      else
+        compressor.disable();
     }
   }
 }

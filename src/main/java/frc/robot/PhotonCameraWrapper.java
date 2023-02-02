@@ -30,13 +30,13 @@ public class PhotonCameraWrapper {
                                         FieldConstants.length,
                                         FieldConstants.width / 2.0,
                                         Rotation2d.fromDegrees(180))));
-        final AprilTag tag02 =
+        final AprilTag tag05 =
                 new AprilTag(
-                        02,
+                        05,
                         new Pose3d(new Pose2d(0.0, 0, new Rotation2d(0, 0))));
         ArrayList<AprilTag> atList = new ArrayList<AprilTag>();
         // atList.add(tag18);
-        atList.add(tag02);
+        atList.add(tag05);
 
         // TODO - once 2023 happens, replace this with just loading the 2023 field arrangement
         AprilTagFieldLayout atfl =
