@@ -40,7 +40,7 @@ public class Drivetrain {
   private final DifferentialDrivePoseEstimator poseEstimator =
     new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), 0.0, 0.0, new Pose2d());
 
-  private final PhotonCameraWrapper pcw = new PhotonCameraWrapper();
+  private final PhotonCameraWrapper pcw;
 
   private final CANSparkMax[] leftMotors;
   private final CANSparkMax[] rightMotors;
@@ -53,6 +53,7 @@ public class Drivetrain {
   }
 
   public Drivetrain(int[] leftIds, int[] rightIds) {
+    pcw = new PhotonCameraWrapper();
     leftMotors = motorsFromIds(leftIds);
     rightMotors = motorsFromIds(rightIds);
 
@@ -63,7 +64,7 @@ public class Drivetrain {
     rightEncoder = rightMotors[0].getEncoder();
 
     // Invert right motor (positive should be forward, negative backward)
-    right.setInverted(true);
+    // right.setInverted(true);
 
     leftEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
@@ -73,7 +74,6 @@ public class Drivetrain {
 
   public void differentialDrive(double speed, double turn) {
     // Positive turn turns right, negative turns left
-    System.out.println("Setting left to: " + (speed + turn) + "; setting right to: " + (speed - turn));
     left.set(speed + turn);
     right.set(speed - turn);
   }

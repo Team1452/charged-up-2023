@@ -10,6 +10,9 @@ import frc.robot.Constants.VisionConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Timer;
+import java.util.TimerTask;
+
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
@@ -19,6 +22,8 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 public class PhotonCameraWrapper {
     public PhotonCamera photonCamera;
     public PhotonPoseEstimator photonPoseEstimator;
+
+    TimerTask task;
 
     public PhotonCameraWrapper() {
         // Set up a test arena of two apriltags at the center of each driver station set
@@ -30,24 +35,33 @@ public class PhotonCameraWrapper {
                                         FieldConstants.length,
                                         FieldConstants.width / 2.0,
                                         Rotation2d.fromDegrees(180))));
-        final AprilTag tag02 =
+        final AprilTag tag05 =
                 new AprilTag(
-                        02,
+                        05,
                         new Pose3d(new Pose2d(0.0, 0, new Rotation2d(0, 0))));
         ArrayList<AprilTag> atList = new ArrayList<AprilTag>();
         // atList.add(tag18);
-        atList.add(tag02);
+        atList.add(tag05);
 
         // TODO - once 2023 happens, replace this with just loading the 2023 field arrangement
         AprilTagFieldLayout atfl =
                 new AprilTagFieldLayout(atList, FieldConstants.length, FieldConstants.width);
 
         // Forward Camera
-        photonCamera =
-                new PhotonCamera(
-                        VisionConstants
-                                .cameraName); // Change the name of your camera here to whatever it is in the
-        // PhotonVision UI.
+        Timer timer = new Timer();
+        
+        task = new TimerTask() {
+            public void run() {
+                System.out.println("Connecting to photon camera '" + VisionConstants.cameraName + "'");
+                photonCamera =
+                        new PhotonCamera(
+                                VisionConstants
+                                        .cameraName); // Change the name of your camera here to whatever it is in the
+                System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
+            }
+        };
+        
+        task.run();
 
         // Create pose estimator
         photonPoseEstimator =

@@ -27,17 +27,19 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
-  private final Drivetrain drive = new Drivetrain(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+  private Drivetrain drive;
   private final PIDController balancer = new PIDController(0.001, 0, 0);
   // private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
-  private final DoubleSolenoid solenoid = new DoubleSolenoid(
-    PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
+  // private final DoubleSolenoid solenoid = new DoubleSolenoid(
+    // PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
 
   @Override
   public void robotInit() {
+    drive = new Drivetrain(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
   }
 
   @Override
@@ -51,7 +53,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // Maybe switch to SlewRateLimiter or PID for smoother control?
-    var speed = -Math.pow(controller.getLeftY(), 3);
+    var speed = Math.pow(controller.getLeftY(), 3);
     var rot = Math.pow(controller.getRightX(), 3);
 
     // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
@@ -66,15 +68,17 @@ public class Robot extends TimedRobot {
     // }
   }
 
+  PhotonCameraWrapper pcw;
+
   @Override
   public void testInit() {
+    pcw = drive.getPcw();
   }
 
-  PhotonCameraWrapper pcw = new PhotonCameraWrapper();
 
   RamseteController ramsete = new RamseteController(1, 0.5);
-  PIDController turnPid = new PIDController(0.05, 0, 0);
-  PIDController distancePid = new PIDController(0.05, 0, 0);
+  PIDController turnPid = new PIDController(0.013, 0, 0.01);
+  PIDController distancePid = new PIDController(0.013, 0, 0.01);
 
   @Override
   public void testPeriodic() {
@@ -100,7 +104,11 @@ public class Robot extends TimedRobot {
     if (estimatedPose.isPresent()) {
       Pose2d pose = estimatedPose.get().estimatedPose.toPose2d();
 
-      Pose2d targetPose = new Pose2d(-10, 0, new Rotation2d(Units.degreesToRadians(180)));
+      // System.out.println("Estimated pose is " + pose);
+
+      Pose2d targetPose = new Pose2d(Units.feetToMeters(10), 0, new Rotation2d(Units.degreesToRadians(-180)));
+
+      System.out.println("Current pose: " + pose + "; target pose: " + targetPose);
 
       double xErr = targetPose.getX() - pose.getX();
       double yErr = targetPose.getY() - pose.getY();
@@ -108,13 +116,25 @@ public class Robot extends TimedRobot {
       double target_yaw = Math.atan2(yErr, xErr);
       double current_yaw = pose.getRotation().getRadians();
 
-      double turn = turnPid.calculate(current_yaw, target_yaw);
+
+      if (Math.abs(target_yaw - current_yaw) > Math.PI) {
+        current_yaw = target_yaw + 2*Math.PI - Math.abs(current_yaw - target_yaw);
+      }
+
+      // System.out.println("Tracking apriltag. xErr: " + xErr + "; yErr: " + yErr + "; angle err: " + (target_yaw - current_yaw));
+
+      // double turn = turnPid.calculate(current_yaw, target_yaw);
+      double turn = 0;
+
+      System.out.println("Target yaw: " + target_yaw + "; current yaw: " + current_yaw + "; adjustment: " + turn);
       
       double distance = Math.sqrt(xErr*xErr + yErr*yErr);
 
       double speed = -distancePid.calculate(distance, 0);
 
       drive.differentialDrive(speed, turn);
+    } else {
+      drive.differentialDrive(0, 0);
     }
   }
 }
