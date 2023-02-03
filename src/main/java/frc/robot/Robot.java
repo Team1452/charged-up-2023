@@ -72,7 +72,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
-    arm.set(controller.getLeftY());
+    arm.set(-Math.pow(controller.getLeftY(), 3));
 
     if (controller.getAButtonPressed()) {
       pistonForward = !pistonForward;

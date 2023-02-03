@@ -9,5 +9,5 @@ public class RobotMap {
 
     public static int PIGEON = 10;
 
-    public static int[] SOLENOID = {4, 5};
+    public static int[] SOLENOID = {0, 1};
 }
