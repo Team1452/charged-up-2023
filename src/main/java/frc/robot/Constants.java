@@ -23,7 +23,7 @@ public class Constants {
     static class VisionConstants {
         static final Transform3d robotToCam =
                 new Transform3d(
-                        new Translation3d(Units.inchesToMeters(16), 0.0, 0.5),
+                        new Translation3d(Units.inchesToMeters(0 /* should be ~16 for center instead of camera */), 0.0, 0.5),
                         new Rotation3d(
                                 0, 0,
                                 0)); // Cam mounted facing forward, 16 inches forward of center, half a meter up
