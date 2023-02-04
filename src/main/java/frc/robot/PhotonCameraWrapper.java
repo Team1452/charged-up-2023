@@ -38,7 +38,7 @@ public class PhotonCameraWrapper {
         final AprilTag tag04 =
                 new AprilTag(
                         04,
-                        new Pose3d(new Pose2d(0.0, 0, new Rotation2d(0, 0))));
+                        new Pose3d(new Pose2d(0, 0, new Rotation2d(0, 0))));
         ArrayList<AprilTag> atList = new ArrayList<AprilTag>();
         // atList.add(tag18);
         atList.add(tag04);

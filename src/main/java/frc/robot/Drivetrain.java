@@ -63,6 +63,9 @@ public class Drivetrain {
     leftEncoder = leftMotors[0].getEncoder();
     rightEncoder = rightMotors[0].getEncoder();
 
+    leftEncoder.setPosition(0);
+    rightEncoder.setPosition(0);
+
     // Invert right motor (positive should be forward, negative backward)
     right.setInverted(true);
 
@@ -106,5 +109,10 @@ public class Drivetrain {
 
   public PhotonCameraWrapper getPcw() {
       return pcw;
+  }
+
+  public double getPosition() {
+    // return (leftEncoder.getPosition() - rightEncoder.getPosition())/2;
+    return leftEncoder.getPosition();
   }
 }
