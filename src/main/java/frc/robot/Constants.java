@@ -12,8 +12,8 @@ public class Constants {
         static final double kTrackWidth = 0.381 * 2; // meters
         static final double kWheelRadius = Units.inchesToMeters(3);
         static final int kEncoderResolution = 42;
-        static final double testBedGearRatio = 1/8.45; 
-        static final double distancePerPulse = testBedGearRatio * 2 * Math.PI * kWheelRadius/(double)kEncoderResolution;
+        static final double testBedGearRatio = 1/10.71;
+        static final double distancePerPulse = testBedGearRatio * 2 * Math.PI * kWheelRadius;
     }
 
     static class FieldConstants {

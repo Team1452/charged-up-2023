@@ -164,7 +164,7 @@ public class Robot extends TimedRobot {
     // double speed = distancePid.calculate(distance, 0);
     
     double position = drive.getPosition();
-    double speed = distancePid.calculate(position, Units.inchesToMeters(12));
+    double speed = distancePid.calculate(position, 1); // 1 meter
 
     System.out.println("Position: " + Units.metersToInches(position) + "; target: " + Units.inchesToMeters(12) + "; speed: " + speed);
 
