@@ -33,7 +33,7 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
 
-  private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
+  //private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
   private final DoubleSolenoid solenoid = new DoubleSolenoid(
     PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
@@ -68,13 +68,14 @@ public class Robot extends TimedRobot {
   }
 
   boolean pistonForward = false;
+  boolean piston2Forward = false;
   boolean compressorEnabled = false;
 
   @Override
   public void testPeriodic() {
-    arm.set(-Math.pow(controller.getLeftY(), 3));
+    //arm.set(-Math.pow(controller.getLeftY(), 3));
 
-    if (controller.getAButtonPressed()) {
+    if (controller.getRightBumperPressed()) {
       pistonForward = !pistonForward;
       System.out.println("Enabling solenoid: " + pistonForward);
       if (pistonForward)
@@ -82,7 +83,14 @@ public class Robot extends TimedRobot {
       else
         solenoid.set(Value.kReverse);
     }
-
+    if (controller.getLeftBumperPressed()) {
+      piston2Forward = !piston2Forward;
+      System.out.println("Enabling solenoid: " + piston2Forward);
+      if (piston2Forward)
+        solenoid.set(Value.kForward);
+      else
+        solenoid.set(Value.kReverse);
+    }
     if (controller.getBButtonPressed()) {
       compressorEnabled = !compressorEnabled;
       if (compressorEnabled)
