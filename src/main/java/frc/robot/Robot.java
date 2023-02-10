@@ -61,7 +61,7 @@ public class Robot extends TimedRobot {
 
   RamseteController ramsete = new RamseteController(1, 0.5);
   PIDController turnPid = new PIDController(0.098, 0.002, 0.01);
-  PIDController distancePid = new PIDController(0.088, 0.002, 0.01);
+  PIDController distancePid = new PIDController(0.2, 0.02, 0.002);
 
   boolean targetingIntermediaryTranslation = true;
 
@@ -110,7 +110,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // Maybe switch to SlewRateLimiter or PID for smoother control?
-    var speed = Math.pow(controller.getLeftY(), 3);
+    var speed = Math.pow(-controller.getLeftY(), 3);
     var rot = Math.pow(controller.getRightX(), 3);
 
     // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
@@ -137,6 +137,8 @@ public class Robot extends TimedRobot {
       initialPose.getY() + Math.sin(yaw) * Units.inchesToMeters(10),
       initialPose.getRotation()
     );
+
+    drive.resetPosition();
   }
 
   String poseToString(Pose2d pose) {
@@ -148,8 +150,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
-    // drive.updateOdometry();
-    // Pose2d pose = drive.getPose();
+    drive.updateOdometry();
+    Pose2d pose = drive.getPose();
     // Pose2d targetPose = poseAhead;
 
     // // Pose2d targetPose = new Pose2d(0, 0, new Rotation2d(Math.toRadians(90)));
@@ -163,10 +165,12 @@ public class Robot extends TimedRobot {
 
     // double speed = distancePid.calculate(distance, 0);
     
-    double position = drive.getPosition();
-    double speed = distancePid.calculate(position, 1); // 1 meter
+    double x = pose.getX();
+    
+    // double position = drive.getPosition();
+    double speed = distancePid.calculate(x, 1); // 1 meter from AprilTag
 
-    System.out.println("Position: " + Units.metersToInches(position) + "; target: " + Units.inchesToMeters(12) + "; speed: " + speed);
+    System.out.println("Position: " + Units.metersToInches(x) + "; target: " + Units.metersToInches(1) + "; speed: " + speed);
 
     drive.differentialDrive(speed, 0);
 

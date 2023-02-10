@@ -67,7 +67,7 @@ public class Drivetrain {
     rightEncoder.setPosition(0);
 
     // Invert right motor (positive should be forward, negative backward)
-    right.setInverted(true);
+    left.setInverted(true);
 
     leftEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
@@ -112,7 +112,12 @@ public class Drivetrain {
   }
 
   public double getPosition() {
-    // return (leftEncoder.getPosition() - rightEncoder.getPosition())/2;
-    return leftEncoder.getPosition();
+    // Left is inverted, so negate encoder position
+    return (-leftEncoder.getPosition() + rightEncoder.getPosition())/2;
+  }
+
+  public void resetPosition() {
+    leftEncoder.setPosition(0);
+    rightEncoder.setPosition(0);
   }
 }
