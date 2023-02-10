@@ -77,8 +77,8 @@ public class Drivetrain {
 
   public void differentialDrive(double speed, double turn) {
     // Positive turn turns right, negative turns left
-    left.set(speed + turn);
-    right.set(speed - turn);
+    left.set(speed - turn);
+    right.set(speed + turn);
   }
 
   /** Updates the field-relative position. */

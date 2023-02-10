@@ -25,6 +25,11 @@ public class PhotonCameraWrapper {
 
     TimerTask task;
 
+    public static final AprilTag tag04 =
+            new AprilTag(
+                    04,
+                    new Pose3d(new Pose2d(0, 0, new Rotation2d(0, 0))));
+
     public PhotonCameraWrapper() {
         // Set up a test arena of two apriltags at the center of each driver station set
         final AprilTag tag18 =
@@ -35,10 +40,6 @@ public class PhotonCameraWrapper {
                                         FieldConstants.length,
                                         FieldConstants.width / 2.0,
                                         Rotation2d.fromDegrees(180))));
-        final AprilTag tag04 =
-                new AprilTag(
-                        04,
-                        new Pose3d(new Pose2d(0, 0, new Rotation2d(0, 0))));
         ArrayList<AprilTag> atList = new ArrayList<AprilTag>();
         // atList.add(tag18);
         atList.add(tag04);

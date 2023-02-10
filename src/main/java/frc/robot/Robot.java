@@ -60,7 +60,7 @@ public class Robot extends TimedRobot {
   private Javalin app;
 
   RamseteController ramsete = new RamseteController(1, 0.5);
-  PIDController turnPid = new PIDController(0.098, 0.002, 0.01);
+  PIDController turnPid = new PIDController(0.068, 0, 0); // 0.002, 0.01);
 
   PIDController distancePid = new PIDController(0.2, 0, 0.002);
 
@@ -153,6 +153,7 @@ public class Robot extends TimedRobot {
   public void testPeriodic() {
     drive.updateOdometry();
     Pose2d pose = drive.getPose();
+    Pose2d relativePose = pose.relativeTo(PhotonCameraWrapper.tag04.pose.toPose2d());
     // Pose2d targetPose = poseAhead;
 
     // // Pose2d targetPose = new Pose2d(0, 0, new Rotation2d(Math.toRadians(90)));
@@ -166,19 +167,37 @@ public class Robot extends TimedRobot {
 
     // double speed = distancePid.calculate(distance, 0);
     
-    double x = pose.getX();
-    double y = pose.getY();
+    double x = relativePose.getX();
+    double y = relativePose.getY();
+
+    double targetAngle = Math.atan2(y, x);
+    double currentAngle = pose.getRotation().getRadians() + Math.PI;
+
+    double turn = turnPid.calculate(currentAngle, targetAngle);
+
+    if (Math.abs(targetAngle - currentAngle) > Math.PI) {
+      turn = -turn;
+    }
+
+    turnPid.setTolerance(0.05);
+
+    System.out.println("Current angle: " + Math.toDegrees(currentAngle) + "; target angle: " + Math.toDegrees(targetAngle) + "; turn: " + turn);
+
+    if (!turnPid.atSetpoint()) {
+      drive.differentialDrive(0, turn);
+    } else {
+      // Negate because behind apriltag
+      double speed = -distancePid.calculate(x, 1); // 1 meter from AprilTag
+
+      System.out.println("X: " + Units.metersToInches(x) + 
+        ", Y: " + Units.metersToInches(y) + "; target: " +
+        Units.metersToInches(1) + "; speed: " + speed);
+
+      drive.differentialDrive(speed, 0);
+    }
     
     // double position = drive.getPosition();
 
-    // Negate because behind apriltag
-    double speed = -distancePid.calculate(x, 1); // 1 meter from AprilTag
-
-    System.out.println("X: " + Units.metersToInches(x) + 
-      ", Y: " + Units.metersToInches(y) + "; target: " +
-      Units.metersToInches(1) + "; speed: " + speed);
-
-    drive.differentialDrive(speed, 0);
 
 
     // if (tick % 20 == 0) {
