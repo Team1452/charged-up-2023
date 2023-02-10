@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.photonvision.EstimatedRobotPose;
 
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.SparkMaxAbsoluteEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.Vector;
@@ -41,6 +42,9 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     compressor.disable();
+    //sets absolute encoder limits for arm
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, );
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, );
   }
 
   @Override
@@ -72,23 +76,25 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
+    
     arm.set(-Math.pow(controller.getLeftY(), 3));
+    System.out.print( arm.getAbsoluteEncoder(SparkMaxAbsoluteEncoder.Type.kDutyCycle) );
+    //Pneumatics stuff
+    // if (controller.getAButtonPressed()) {
+    //   pistonForward = !pistonForward;
+    //   System.out.println("Enabling solenoid: " + pistonForward);
+    //   if (pistonForward)
+    //     solenoid.set(Value.kForward);
+    //   else
+    //     solenoid.set(Value.kReverse);
+    // }
 
-    if (controller.getAButtonPressed()) {
-      pistonForward = !pistonForward;
-      System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward)
-        solenoid.set(Value.kForward);
-      else
-        solenoid.set(Value.kReverse);
-    }
-
-    if (controller.getBButtonPressed()) {
-      compressorEnabled = !compressorEnabled;
-      if (compressorEnabled)
-        compressor.enableDigital();
-      else
-        compressor.disable();
-    }
+    // if (controller.getBButtonPressed()) {
+    //   compressorEnabled = !compressorEnabled;
+    //   if (compressorEnabled)
+    //     compressor.enableDigital();
+    //   else
+    //     compressor.disable();
+    // }
   }
 }
