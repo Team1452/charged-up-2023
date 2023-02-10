@@ -83,8 +83,9 @@ public class Drivetrain {
 
   /** Updates the field-relative position. */
   public void updateOdometry() {
+    // Left encoder is inverted
     poseEstimator.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
+            gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example
     // -- on
@@ -112,7 +113,7 @@ public class Drivetrain {
   }
 
   public double getPosition() {
-    // Left is inverted, so negate encoder position
+    // Left is inverted
     return (-leftEncoder.getPosition() + rightEncoder.getPosition())/2;
   }
 

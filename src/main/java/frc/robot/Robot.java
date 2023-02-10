@@ -61,7 +61,8 @@ public class Robot extends TimedRobot {
 
   RamseteController ramsete = new RamseteController(1, 0.5);
   PIDController turnPid = new PIDController(0.098, 0.002, 0.01);
-  PIDController distancePid = new PIDController(0.2, 0.02, 0.002);
+
+  PIDController distancePid = new PIDController(0.2, 0, 0.002);
 
   boolean targetingIntermediaryTranslation = true;
 
@@ -166,11 +167,16 @@ public class Robot extends TimedRobot {
     // double speed = distancePid.calculate(distance, 0);
     
     double x = pose.getX();
+    double y = pose.getY();
     
     // double position = drive.getPosition();
-    double speed = distancePid.calculate(x, 1); // 1 meter from AprilTag
 
-    System.out.println("Position: " + Units.metersToInches(x) + "; target: " + Units.metersToInches(1) + "; speed: " + speed);
+    // Negate because behind apriltag
+    double speed = -distancePid.calculate(x, 1); // 1 meter from AprilTag
+
+    System.out.println("X: " + Units.metersToInches(x) + 
+      ", Y: " + Units.metersToInches(y) + "; target: " +
+      Units.metersToInches(1) + "; speed: " + speed);
 
     drive.differentialDrive(speed, 0);
 

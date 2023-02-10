@@ -50,18 +50,12 @@ public class PhotonCameraWrapper {
         // Forward Camera
         Timer timer = new Timer();
         
-        task = new TimerTask() {
-            public void run() {
-                System.out.println("Connecting to photon camera '" + VisionConstants.cameraName + "'");
-                photonCamera =
-                        new PhotonCamera(
-                                VisionConstants
-                                        .cameraName); // Change the name of your camera here to whatever it is in the
-                System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
-            }
-        };
-        
-        task.run();
+        System.out.println("Connecting to photon camera '" + VisionConstants.cameraName + "'");
+        photonCamera =
+                new PhotonCamera(
+                        VisionConstants
+                                .cameraName); // Change the name of your camera here to whatever it is in the
+        System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
 
         // Create pose estimator
         photonPoseEstimator =
