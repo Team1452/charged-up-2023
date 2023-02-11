@@ -10,4 +10,5 @@ public class RobotMap {
     public static int PIGEON = 10;
 
     public static int[] SOLENOID = {0, 1};
+    public static int forwardLimit = 125;
 }
