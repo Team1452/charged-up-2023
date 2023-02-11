@@ -52,8 +52,8 @@ public class Robot extends TimedRobot {
 
 
     //sets absolute encoder limits for arm
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, forwardLimit);
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, backLimit);
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, Constants.ABSOLUTE_FORWARD_LIMIT);
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, Constants.ABSOLUTE_BACK_LIMIT);
   }
 
   @Override
