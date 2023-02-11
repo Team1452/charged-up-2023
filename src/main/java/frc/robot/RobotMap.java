@@ -5,9 +5,10 @@ public class RobotMap {
     public static int[] TEST_MOTOR_RIGHT = {22};
 
     public static int[] MOTOR_LEFT = {13, 17};
-    public static int[] MOTOR_RIGHT = {3, 14};
+    public static int[] MOTOR_RIGHT = {5, 14};
 
     public static int PIGEON = 10;
 
     public static int[] SOLENOID = {0, 1};
+    public static int[] SOLENOID2 = {2, 3};
 }
