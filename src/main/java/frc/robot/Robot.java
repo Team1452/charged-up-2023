@@ -27,25 +27,13 @@ import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.GenericEntry;
-import edu.wpi.first.networktables.NetworkTableEntry;
-import edu.wpi.first.wpilibj.DoubleSolenoid;
-import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
-import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
-import edu.wpi.first.wpilibj.shuffleboard.SimpleWidget;
-import edu.wpi.first.wpilibj.shuffleboard.WidgetType;
+import frc.robot.util.Vec2;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 
@@ -57,10 +45,10 @@ public class Robot extends TimedRobot {
   // private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
   // private final DoubleSolenoid solenoid = new DoubleSolenoid(
     // PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
-  private Javalin app;
+  private Javalin app = null;
 
   RamseteController ramsete = new RamseteController(1, 0.5);
-  PIDController turnPid = new PIDController(0.068, 0, 0); // 0.002, 0.01);
+  PIDController turnPid = new PIDController(0.03, 0.01, 0); // 0.002, 0.01);
 
   PIDController distancePid = new PIDController(0.2, 0, 0.002);
 
@@ -71,10 +59,7 @@ public class Robot extends TimedRobot {
   private final Map<WsContext, String> clients = new ConcurrentHashMap<>();
   private int userNumber = 0;
 
-  @Override
-  public void robotInit() {
-    tick = 0;
-    drive = new Drivetrain(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+  public void initWS() {
     app = Javalin.create().start(7070);
   
     app.ws("/debug", ws -> {
@@ -87,6 +72,14 @@ public class Robot extends TimedRobot {
         clients.remove(ctx);
       });
     });
+  }
+
+  @Override
+  public void robotInit() {
+    tick = 0;
+    drive = new Drivetrain(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+
+    // initWS();
   }
 
   private void broadcastMessage(String message) {
@@ -167,30 +160,48 @@ public class Robot extends TimedRobot {
 
     // double speed = distancePid.calculate(distance, 0);
     
-    double x = relativePose.getX();
-    double y = relativePose.getY();
+    double relativeX = relativePose.getX();
+    double relativeY = relativePose.getY();
+    double relativeLength = Math.sqrt(relativeX*relativeX + relativeY*relativeY);
 
-    double targetAngle = Math.atan2(y, x);
-    double currentAngle = pose.getRotation().getRadians() + Math.PI;
+    // double dotProd = new Vec2(relativePose.getX(), relativePose.getY())
+    //   .hat()
+    //   .dot(new Vec2(pose.getRotation().getCos(), pose.getRotation().getSin()));
 
-    double turn = turnPid.calculate(currentAngle, targetAngle);
+    Rotation2d currentRotation = pose.getRotation();
 
-    if (Math.abs(targetAngle - currentAngle) > Math.PI) {
-      turn = -turn;
+    Vec2 currentHeading = new Vec2(currentRotation.getCos(), currentRotation.getSin());
+    Vec2 targetHeading = new Vec2(relativePose.getX(), relativePose.getY()).hat();
+
+    // Dot product tells us how far we are from target angle
+    double dotProd = currentHeading.dot(targetHeading);
+    
+    // Use z component of 3d cross product to know whether
+    // to turn clockwise or counterclockwise
+    double crossZ = currentHeading.getX() * targetHeading.getY()
+      - currentHeading.getY() * targetHeading.getX();
+
+    double turn = Math.signum(crossZ) * turnPid.calculate(dotProd, 1);
+
+    turnPid.setTolerance(0.02);
+
+    System.out.print("Can see AprilTag: ");
+
+    for (var target : drive.getPcw().getTargets()) {
+      System.out.print(target.getFiducialId() + " ");
     }
 
-    turnPid.setTolerance(0.05);
+    System.out.print("; Current dot product: " + dotProd + ", turning: "  + turn + ", cross: " + crossZ + "\n");
 
-    System.out.println("Current angle: " + Math.toDegrees(currentAngle) + "; target angle: " + Math.toDegrees(targetAngle) + "; turn: " + turn);
+    turnPid.setIntegratorRange(-0.1, 0.1);
 
     if (!turnPid.atSetpoint()) {
       drive.differentialDrive(0, turn);
     } else {
       // Negate because behind apriltag
-      double speed = -distancePid.calculate(x, 1); // 1 meter from AprilTag
+      double speed = -distancePid.calculate(relativeLength, 1); // 1 meter from AprilTag
 
-      System.out.println("X: " + Units.metersToInches(x) + 
-        ", Y: " + Units.metersToInches(y) + "; target: " +
+      System.out.println("Distance: " + Units.metersToInches(relativeLength) + "; target: " +
         Units.metersToInches(1) + "; speed: " + speed);
 
       drive.differentialDrive(speed, 0);
