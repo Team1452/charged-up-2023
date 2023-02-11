@@ -36,24 +36,25 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
-  private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
-  private final DoubleSolenoid solenoid = new DoubleSolenoid(
-    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
+  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
+  private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
   private SparkMaxPIDController armPID;
   private AbsoluteEncoder armEncoder;
-  public double kP, kI, kD, kIz, kFF, kMaxOutput, kMinOutput;
   @Override
   public void robotInit() {
     compressor.disable();
     arm.restoreFactoryDefaults();
     armEncoder = arm.getAbsoluteEncoder(SparkMaxAbsoluteEncoder.Type.kDutyCycle);
-    armPID = arm.getPIDController();
-
-
-    //sets absolute encoder limits for arm
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, Constants.ABSOLUTE_FORWARD_LIMIT);
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, Constants.ABSOLUTE_BACK_LIMIT);
+    // armPID = arm.getPIDController();
+    // armPID.setP(0.001);
+    // armPID.setI(0.001);
+    // armPID.setD(0);
+    // armPID.setOutputRange(-1, 1);
+    // sets absolute encoder limits for arm
+    // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, RobotMap.ABSOLUTE_FORWARD_LIMIT);
+    // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, RobotMap.ABSOLUTE_BACK_LIMIT);
+    //armPID.setReference(0, CANSparkMax.ControlType.kPosition);
   }
 
   @Override
@@ -78,17 +79,21 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
-    solenoid.set(Value.kOff); // Off by default
   }
 
   boolean pistonForward = false;
   boolean compressorEnabled = false;
   @Override
   public void testPeriodic() {
-
-    arm.
-    arm.set(-Math.pow(controller.getLeftY(), 3));
-    System.out.print( armEncoder );
+    arm.set(Math.pow(controller.getLeftY(), 3));
+    if(controller.getLeftBumper()){
+      extender.set(0.2);
+    }else if(controller.getRightBumper()){
+      extender.set(-0.2);
+    }else{
+      extender.set(0);
+    }
+    System.out.println("arm Encoder values are " + armEncoder.getPosition() );
     //Pneumatics stuff
     // if (controller.getAButtonPressed()) {
     //   pistonForward = !pistonForward;
