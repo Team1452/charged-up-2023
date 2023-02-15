@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.photonvision.EstimatedRobotPose;
 
+import com.fasterxml.jackson.core.StreamReadCapability;
 import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
@@ -32,6 +33,7 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 
 public class Robot extends TimedRobot {
@@ -39,8 +41,10 @@ public class Robot extends TimedRobot {
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
+  private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
+  private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private SparkMaxPIDController armPID;
-  private AbsoluteEncoder armEncoder;
+  private SparkMaxAbsoluteEncoder armEncoder;
   @Override
   public void robotInit() {
     compressor.disable();
@@ -85,13 +89,13 @@ public class Robot extends TimedRobot {
   boolean compressorEnabled = false;
   @Override
   public void testPeriodic() {
-    arm.set(Math.pow(controller.getLeftY(), 3));
+    arm.set(armSlewLimiter.calculate(Math.pow(controller.getLeftY(), 3)));
     if(controller.getLeftBumper()){
-      extender.set(0.2);
+      extender.set(extenderSlewLimiter.calculate(0.2));
     }else if(controller.getRightBumper()){
-      extender.set(-0.2);
+      extender.set(extenderSlewLimiter.calculate(-0.2));
     }else{
-      extender.set(0);
+      extender.set(extenderSlewLimiter.calculate(0));
     }
     System.out.println("arm Encoder values are " + armEncoder.getPosition() );
     //Pneumatics stuff
