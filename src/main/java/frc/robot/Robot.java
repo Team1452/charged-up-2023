@@ -29,17 +29,27 @@ import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.shuffleboard.SimpleWidget;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.FunctionalCommand;
+import edu.wpi.first.wpilibj2.command.PIDCommand;
+import frc.robot.commands.Balance;
+import frc.robot.commands.MoveDistance;
 import frc.robot.util.Vec2;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
-  private Drivetrain drive;
+  private DriveSubsystem drive;
   private int tick;
   private final PIDController balancer = new PIDController(0.001, 0, 0);
   // private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
@@ -48,13 +58,13 @@ public class Robot extends TimedRobot {
   private Javalin app = null;
 
   RamseteController ramsete = new RamseteController(1, 0.5);
-  PIDController turnPid = new PIDController(0.03, 0.01, 0); // 0.002, 0.01);
+  PIDController turnPid = new PIDController(0.1, 0.02, 0); // 0.002, 0.01);
 
-  PIDController distancePid = new PIDController(0.2, 0, 0.002);
+  PIDController distancePid = new PIDController(0.1, 0, 0.002);
 
   boolean targetingIntermediaryTranslation = true;
 
-  ShuffleboardTab tab = Shuffleboard.getTab("AprilTag Test");
+  ShuffleboardTab tab = Shuffleboard.getTab("AprilTag Turning Test");
 
   private final Map<WsContext, String> clients = new ConcurrentHashMap<>();
   private int userNumber = 0;
@@ -77,7 +87,9 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     tick = 0;
-    drive = new Drivetrain(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+    drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+
+    targetAngleInput = tab.add("Target Angle (Deg)", 0).getEntry();
 
     // initWS();
   }
@@ -95,6 +107,13 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    Command moveForward = new MoveDistance(10, drive);
+    Command moveBackward = new MoveDistance(-3, drive);
+    Command balance = new Balance(drive);
+
+    moveForward
+      .andThen(moveBackward)
+      .andThen(balance);
   }
 
   @Override
@@ -121,6 +140,7 @@ public class Robot extends TimedRobot {
 
 
   Pose2d poseAhead;
+  GenericEntry targetAngleInput;
 
   @Override
   public void testInit() {
@@ -133,6 +153,7 @@ public class Robot extends TimedRobot {
     );
 
     drive.resetPosition();
+
   }
 
   String poseToString(Pose2d pose) {
@@ -140,73 +161,46 @@ public class Robot extends TimedRobot {
       + ", yaw: " + pose.getRotation().getDegrees();
   }
 
-
-
   @Override
   public void testPeriodic() {
     drive.updateOdometry();
+
     Pose2d pose = drive.getPose();
-    Pose2d relativePose = pose.relativeTo(PhotonCameraWrapper.tag04.pose.toPose2d());
-    // Pose2d targetPose = poseAhead;
-
-    // // Pose2d targetPose = new Pose2d(0, 0, new Rotation2d(Math.toRadians(90)));
-
-    // Pose2d relativePose = pose.relativeTo(targetPose);
-
-    // double distance = Math.sqrt(
-    //   Math.pow(relativePose.getX(), 2)
-    //   + Math.pow(relativePose.getY(), 2)
-    // );
-
-    // double speed = distancePid.calculate(distance, 0);
-    
-    double relativeX = relativePose.getX();
-    double relativeY = relativePose.getY();
-    double relativeLength = Math.sqrt(relativeX*relativeX + relativeY*relativeY);
-
-    // double dotProd = new Vec2(relativePose.getX(), relativePose.getY())
-    //   .hat()
-    //   .dot(new Vec2(pose.getRotation().getCos(), pose.getRotation().getSin()));
+    Pose2d aprilTagPose = PhotonCameraWrapper.tag04.pose.toPose2d();
 
     Rotation2d currentRotation = pose.getRotation();
 
-    Vec2 currentHeading = new Vec2(currentRotation.getCos(), currentRotation.getSin());
-    Vec2 targetHeading = new Vec2(relativePose.getX(), relativePose.getY()).hat();
+    double currentAngle = currentRotation.getRadians();
+    double targetAngle = (Math.atan2(aprilTagPose.getY() - pose.getY(), aprilTagPose.getX() - pose.getX()));
 
-    // Dot product tells us how far we are from target angle
-    double dotProd = currentHeading.dot(targetHeading);
-    
-    // Use z component of 3d cross product to know whether
-    // to turn clockwise or counterclockwise
-    double crossZ = currentHeading.getX() * targetHeading.getY()
-      - currentHeading.getY() * targetHeading.getX();
+    targetAngle = Math.toRadians(targetAngleInput.getDouble(0));
 
-    double turn = Math.signum(crossZ) * turnPid.calculate(dotProd, 1);
+    // Radians increase CCW, but positive rotation is CW
+    turnPid.enableContinuousInput(-Math.PI, Math.PI);
+    double turn = turnPid.calculate(currentAngle, targetAngle);
 
-    turnPid.setTolerance(0.02);
+    System.out.println("Current angle: " + Math.toDegrees(currentAngle) + " deg; target angle: " + Math.toDegrees(targetAngle) + " deg; turn: " + turn);
 
-    System.out.print("Can see AprilTag: ");
+    // turn = Math.signum(turn) * Math.min(Math.abs(turn), 0.05); // Stop gap for death spirals
 
-    for (var target : drive.getPcw().getTargets()) {
-      System.out.print(target.getFiducialId() + " ");
-    }
+    drive.differentialDrive(0, turn);
 
-    System.out.print("; Current dot product: " + dotProd + ", turning: "  + turn + ", cross: " + crossZ + "\n");
+    // turnPid.setTolerance(0.1);
 
-    turnPid.setIntegratorRange(-0.1, 0.1);
 
-    if (!turnPid.atSetpoint()) {
-      drive.differentialDrive(0, turn);
-    } else {
-      // Negate because behind apriltag
-      double speed = -distancePid.calculate(relativeLength, 1); // 1 meter from AprilTag
+    // if (!turnPid.atSetpoint()) {
+    // } else {
+    //   double distance = Math.hypot(aprilTagPose.getX() - pose.getX(), aprilTagPose.getY() - pose.getY());
 
-      System.out.println("Distance: " + Units.metersToInches(relativeLength) + "; target: " +
-        Units.metersToInches(1) + "; speed: " + speed);
+    //   // Negate because behind apriltag
+    //   double speed = distancePid.calculate(distance, 1); // 1 meter from AprilTag
 
-      drive.differentialDrive(speed, 0);
-    }
-    
+    //   System.out.println("Distance: " + Units.metersToInches(distance) + "; target: " +
+    //     Units.metersToInches(1) + "; speed: " + speed);
+
+    //   drive.differentialDrive(speed, 0);
+    // }
+
     // double position = drive.getPosition();
 
 

@@ -30,7 +30,7 @@ public class Vec2 {
     public String toString() { return "<" + x + ", " + y + ">"; }
 
     public double dot(Vec2 other) { return x * other.x + y * other.y; } 
-    public double norm() { return Math.sqrt(x*x + y*y); }
+    public double norm() { return Math.hypot(x, y); }
     public Vec2 hat() { return this.div(this.norm()); }
     // fun rotate(rad: Double) = Vec2(cos(rad) * x - sin(rad) * y, sin(rad) * x + cos(rad) * y)
     // fun rotateDeg(deg: Double) = rotate(deg * PI/180.0)

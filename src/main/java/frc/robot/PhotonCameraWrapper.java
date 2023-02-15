@@ -28,7 +28,7 @@ public class PhotonCameraWrapper {
     public static final AprilTag tag04 =
             new AprilTag(
                     04,
-                    new Pose3d(new Pose2d(0, 0, new Rotation2d(0, 0))));
+                    new Pose3d(new Pose2d(0, 0, new Rotation2d(0))));
 
     public PhotonCameraWrapper() {
         // Set up a test arena of two apriltags at the center of each driver station set

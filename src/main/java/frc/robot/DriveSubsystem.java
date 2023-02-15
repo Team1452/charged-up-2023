@@ -18,11 +18,12 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
-import frc.robot.Constants.DriveTrainConstants;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.DriveConstants;
 import org.photonvision.EstimatedRobotPose;
 import com.revrobotics.CANSparkMax;
 
-public class Drivetrain {
+public class DriveSubsystem extends SubsystemBase {
   // private final CANSparkMax leftMotor = new CANSparkMax(RobotMap.MOTOR_LEFT, CANSparkMaxLowLevel.MotorType.kBrushless);
   // private final CANSparkMax rightMotor = new CANSparkMax(RobotMap.MOTOR_RIGHT, CANSparkMaxLowLevel.MotorType.kBrushless);
 
@@ -35,7 +36,7 @@ public class Drivetrain {
   private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
   private final DifferentialDriveKinematics kinematics =
-    new DifferentialDriveKinematics(Constants.DriveTrainConstants.kTrackWidth);
+    new DifferentialDriveKinematics(Constants.DriveConstants.kTrackWidth);
 
   private final DifferentialDrivePoseEstimator poseEstimator =
     new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), 0.0, 0.0, new Pose2d());
@@ -52,7 +53,7 @@ public class Drivetrain {
     return motors;
   }
 
-  public Drivetrain(int[] leftIds, int[] rightIds) {
+  public DriveSubsystem(int[] leftIds, int[] rightIds) {
     pcw = new PhotonCameraWrapper();
     leftMotors = motorsFromIds(leftIds);
     rightMotors = motorsFromIds(rightIds);
@@ -69,16 +70,24 @@ public class Drivetrain {
     // Invert right motor (positive should be forward, negative backward)
     left.setInverted(true);
 
-    leftEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
-    rightEncoder.setPositionConversionFactor(DriveTrainConstants.distancePerPulse);
+    leftEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
+    rightEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
 
     gyro.reset();
   }
 
+  public double getPitch() {
+    return gyro.getPitch();
+  }
+
+  public double getHeading() {
+    return gyro.getAngle();
+  }
+
   public void differentialDrive(double speed, double turn) {
     // Positive turn turns right, negative turns left
-    left.set(speed - turn);
-    right.set(speed + turn);
+    left.set(speed + turn);
+    right.set(speed - turn);
   }
 
   /** Updates the field-relative position. */
