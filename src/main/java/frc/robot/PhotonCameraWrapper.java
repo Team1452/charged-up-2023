@@ -10,6 +10,8 @@ import frc.robot.Constants.VisionConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import org.opencv.photo.Photo;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
@@ -64,7 +66,6 @@ public class PhotonCameraWrapper {
         // photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
         return photonPoseEstimator.update();
     }
-
     public List<PhotonTrackedTarget> getTargets() {
         var result = photonCamera.getLatestResult();
         List<PhotonTrackedTarget> targets = result.getTargets();

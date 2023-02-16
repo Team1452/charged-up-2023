@@ -7,6 +7,9 @@ package frc.robot;
 import java.util.Optional;
 
 import org.photonvision.EstimatedRobotPose;
+import org.photonvision.PhotonCamera;
+import org.photonvision.PhotonUtils;
+import org.photonvision.targeting.PhotonTrackedTarget;
 
 import com.fasterxml.jackson.core.StreamReadCapability;
 import com.revrobotics.AbsoluteEncoder;
@@ -45,11 +48,15 @@ public class Robot extends TimedRobot {
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private SparkMaxPIDController armPID;
   private SparkMaxAbsoluteEncoder armEncoder;
+  private SparkMaxAbsoluteEncoder extenderEncoder;
   @Override
   public void robotInit() {
     compressor.disable();
     arm.restoreFactoryDefaults();
+    arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
     armEncoder = arm.getAbsoluteEncoder(SparkMaxAbsoluteEncoder.Type.kDutyCycle);
+    extenderEncoder = arm.getAbsoluteEncoder(SparkMaxAbsoluteEncoder.Type.kDutyCycle);
     // armPID = arm.getPIDController();
     // armPID.setP(0.001);
     // armPID.setI(0.001);
@@ -67,18 +74,17 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
+
   }
+  final PhotonCamera camera = new PhotonCamera(Constants.VisionConstants.cameraName);
+
+
 
   @Override
   public void teleopPeriodic() {
-    //  private final PIDController balancer = new PIDController(0.001, 0, 0);
-    // var speed = -Math.pow(controller.getLeftY(), 3);
-    // var rot = Math.pow(controller.getRightX(), 3);
-
-    // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-
-    // drive.differentialDrive(speed, rot);
-
+    //var result = camera.getLatestResult();
+    //PhotonTrackedTarget target = result.getBestTarget();
+    //double armHeight = Math.tan()
   }
 
   @Override
@@ -97,7 +103,7 @@ public class Robot extends TimedRobot {
     }else{
       extender.set(extenderSlewLimiter.calculate(0));
     }
-    System.out.println("arm Encoder values are " + armEncoder.getPosition() );
+    System.out.println("arm Encoder values are " + armEncoder.getPosition()/Constants.armConstants.arm_gearing );
     //Pneumatics stuff
     // if (controller.getAButtonPressed()) {
     //   pistonForward = !pistonForward;

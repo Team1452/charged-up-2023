@@ -6,6 +6,10 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 
 public class Constants {
+    static class armConstants{
+        static final double arm_gearing = 1/350;
+        static final double arm_gearing = 1/5;
+    }
     static class DriveTrainConstants {
         static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
@@ -21,6 +25,8 @@ public class Constants {
     }
 
     static class VisionConstants {
+        static final double ARM_BASE_LENGTH_INCHES = 20.5;
+        static final double ARM_EXTENSION_LENGTH_INCHES =  0;//TODO
         static final Transform3d robotToCam =
                 new Transform3d(
                         new Translation3d(Units.inchesToMeters(16), 0.0, 0.5),
