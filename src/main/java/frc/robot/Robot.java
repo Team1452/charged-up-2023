@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.photonvision.EstimatedRobotPose;
 
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -38,11 +39,13 @@ import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj.shuffleboard.SimpleWidget;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
+import frc.robot.commands.TurnToAngle;
 import frc.robot.util.Vec2;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
@@ -111,13 +114,41 @@ public class Robot extends TimedRobot {
     Command moveBackward = new MoveDistance(-3, drive);
     Command balance = new Balance(drive);
 
-    moveForward
-      .andThen(moveBackward)
-      .andThen(balance);
+    drive.setIdleMode(IdleMode.kBrake);
+
+    Command sequence = new MoveDistance(Units.inchesToMeters(80), drive)
+      .andThen(new TurnToAngle(-90, drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
+      .andThen(new TurnToAngle(-180, drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(80), drive))
+      .andThen(new TurnToAngle(-270, drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
+      .andThen(new TurnToAngle(0, drive));
+
+    System.out.println("Scheduling command");
+    sequence.schedule();
+
+
+
+    // Command moveForward = new MoveDistance(10, drive);
+    // Command moveBackward = new MoveDistance(-3, drive);
+    // Command balance = new Balance(drive);
+
+    // moveForward
+    //   .andThen(moveBackward)
+    //   .andThen(balance);
   }
 
   @Override
   public void autonomousPeriodic() {
+    // Run currently schedule commands
+    CommandScheduler.getInstance().run();
+  }
+
+  @Override
+  public void autonomousExit() {
+    System.out.println("Setting idle mode");
+    drive.setIdleMode(IdleMode.kCoast);
   }
 
   @Override
@@ -173,7 +204,7 @@ public class Robot extends TimedRobot {
     double currentAngle = currentRotation.getRadians();
     double targetAngle = (Math.atan2(aprilTagPose.getY() - pose.getY(), aprilTagPose.getX() - pose.getX()));
 
-    targetAngle = Math.toRadians(targetAngleInput.getDouble(0));
+    // targetAngle = Math.toRadians(targetAngleInput.getDouble(0));
 
     // Radians increase CCW, but positive rotation is CW
     turnPid.enableContinuousInput(-Math.PI, Math.PI);
@@ -181,7 +212,7 @@ public class Robot extends TimedRobot {
 
     System.out.println("Current angle: " + Math.toDegrees(currentAngle) + " deg; target angle: " + Math.toDegrees(targetAngle) + " deg; turn: " + turn);
 
-    // turn = Math.signum(turn) * Math.min(Math.abs(turn), 0.05); // Stop gap for death spirals
+    turn = Math.signum(turn) * Math.min(Math.abs(turn), 0.1); // Stop gap for death spirals
 
     drive.differentialDrive(0, turn);
 

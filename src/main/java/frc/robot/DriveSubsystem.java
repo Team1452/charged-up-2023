@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
 import com.revrobotics.CANSparkMaxLowLevel;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
@@ -46,10 +47,25 @@ public class DriveSubsystem extends SubsystemBase {
   private final CANSparkMax[] leftMotors;
   private final CANSparkMax[] rightMotors;
 
+  private double maxVoltage = 0.15;
+
+  public void setMaxVoltage(double maxVoltage) {
+      this.maxVoltage = maxVoltage;
+  }
+
+  public void setIdleMode(IdleMode mode) {
+    for (CANSparkMax motor : leftMotors)
+      motor.setIdleMode(mode);
+    for (CANSparkMax motor : rightMotors)
+      motor.setIdleMode(mode);
+  }
+
   private CANSparkMax[] motorsFromIds(int[] canIds) {
     CANSparkMax[] motors = new CANSparkMax[canIds.length];
-    for (int i = 0; i < canIds.length; i++)
+    for (int i = 0; i < canIds.length; i++) {
       motors[i] = new CANSparkMax(canIds[i], MotorType.kBrushless);
+      motors[i].setIdleMode(IdleMode.kBrake); // Set idle mode to brake 
+    }
     return motors;
   }
 
@@ -84,10 +100,15 @@ public class DriveSubsystem extends SubsystemBase {
     return gyro.getAngle();
   }
 
+  private void setWithLimit(MotorController controller, double value) {
+    double limitedValue = Math.signum(value) * Math.min(Math.abs(value), maxVoltage);
+    controller.set(limitedValue);
+  }
+
   public void differentialDrive(double speed, double turn) {
     // Positive turn turns right, negative turns left
-    left.set(speed + turn);
-    right.set(speed - turn);
+    setWithLimit(left, speed + turn);
+    setWithLimit(right, speed - turn);
   }
 
   /** Updates the field-relative position. */

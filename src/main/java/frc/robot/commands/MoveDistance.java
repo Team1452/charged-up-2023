@@ -8,16 +8,33 @@ import frc.robot.DriveSubsystem;
 
 // TODO: Migrate this to PIDCommand()
 public class MoveDistance extends PIDCommand {
+    DriveSubsystem drive;
+    double distanceMeters;
+
     public MoveDistance(double distanceMeters, DriveSubsystem drive) {
         super(
             new PIDController(DriveConstants.kMoveP, DriveConstants.kMoveI, DriveConstants.kMoveD),
             drive::getPosition,
             drive.getPosition() + distanceMeters,
-            output -> drive.differentialDrive(0, output),
+            output -> {
+                System.out.println("MoveDistance: position is " 
+                    + Units.metersToInches(drive.getPosition()) 
+                    + " inches, target is " + Units.metersToInches(distanceMeters));
+                drive.differentialDrive(output, 0);
+            },
             drive);
+        
+        this.drive = drive;
+        this.distanceMeters = distanceMeters;
 
         getController()
             .setTolerance(0.001); // TODO: Move to constants
+    }
+
+    @Override
+    public void initialize() {
+        double value = drive.getPosition() + distanceMeters;
+        this.m_setpoint = () -> value;
     }
 
     @Override

@@ -14,17 +14,17 @@ public class Constants {
         public static final double kGearRatio = 1/10.71;
         public static final double kDistancePerPulse = kGearRatio * 2 * Math.PI * kWheelRadius;
 
-        public static final double kMoveP = 0;
-        public static final double kMoveI = 0;
+        public static final double kMoveP = 0.07;
+        public static final double kMoveI = 0.01;
         public static final double kMoveD = 0;
-        public static final double kMoveToleranceMeters = 2;
+        public static final double kMoveToleranceMeters = Units.inchesToMeters(1);
 
-        public static final double kTurnP = 0;
-        public static final double kTurnI = 0;
+        public static final double kTurnP = 0.04;
+        public static final double kTurnI = 0.001;
         public static final double kTurnD = 0;
-        public static final double kTurnAngleToleranceDegrees = 2;
+        public static final double kTurnAngleToleranceDegrees = 5;
 
-        public static final double kBalanceP = 0;
+        public static final double kBalanceP = 0.1;
         public static final double kBalanceI = 0;
         public static final double kBalanceD = 0;
         public static final double kBalanceToleranceDegrees = 1;
