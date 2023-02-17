@@ -8,7 +8,7 @@ import edu.wpi.first.math.util.Units;
 public class Constants {
     static class armConstants{
         static final double arm_gearing = 1/350;
-        static final double arm_gearing = 1/5;
+        static final double extender_gearing= 1/5;
     }
     static class DriveTrainConstants {
         static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s

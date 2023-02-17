@@ -17,6 +17,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkMaxAbsoluteEncoder;
 import com.revrobotics.SparkMaxPIDController;
+import com.revrobotics.SparkMaxRelativeEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.Vector;
@@ -32,6 +33,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
@@ -44,23 +46,24 @@ public class Robot extends TimedRobot {
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
-  private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
+  //private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private SparkMaxPIDController armPID;
-  private SparkMaxAbsoluteEncoder armEncoder;
-  private SparkMaxAbsoluteEncoder extenderEncoder;
+  private RelativeEncoder armEncoder;
+  private RelativeEncoder extenderEncoder;
   @Override
   public void robotInit() {
     compressor.disable();
     arm.restoreFactoryDefaults();
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
     extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
-    armEncoder = arm.getAbsoluteEncoder(SparkMaxAbsoluteEncoder.Type.kDutyCycle);
-    extenderEncoder = arm.getAbsoluteEncoder(SparkMaxAbsoluteEncoder.Type.kDutyCycle);
-    // armPID = arm.getPIDController();
-    // armPID.setP(0.001);
-    // armPID.setI(0.001);
-    // armPID.setD(0);
+    armEncoder = arm.getEncoder();
+    extenderEncoder = arm.getEncoder();
+    armPID = arm.getPIDController();
+     
+    armPID.setP(0.001);
+    armPID.setI(0.001);
+    armPID.setD(0);
     // armPID.setOutputRange(-1, 1);
     // sets absolute encoder limits for arm
     // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, RobotMap.ABSOLUTE_FORWARD_LIMIT);
@@ -95,7 +98,10 @@ public class Robot extends TimedRobot {
   boolean compressorEnabled = false;
   @Override
   public void testPeriodic() {
-    arm.set(armSlewLimiter.calculate(Math.pow(controller.getLeftY(), 3)));
+
+    System.out.println("arm Encoder values are " + armEncoder.getPosition());
+    System.out.println("arm Vel values are " + armEncoder.getVelocity());
+    armPID.setReference(Math.pow(controller.getLeftY(), 3), CANSparkMax.ControlType.kPosition);
     if(controller.getLeftBumper()){
       extender.set(extenderSlewLimiter.calculate(0.2));
     }else if(controller.getRightBumper()){
@@ -103,7 +109,7 @@ public class Robot extends TimedRobot {
     }else{
       extender.set(extenderSlewLimiter.calculate(0));
     }
-    System.out.println("arm Encoder values are " + armEncoder.getPosition()/Constants.armConstants.arm_gearing );
+
     //Pneumatics stuff
     // if (controller.getAButtonPressed()) {
     //   pistonForward = !pistonForward;
