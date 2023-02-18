@@ -12,6 +12,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.Vector;
+import edu.wpi.first.math.controller.BangBangController;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -22,6 +23,7 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
@@ -43,11 +45,13 @@ public class Robot extends TimedRobot {
     // PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0]);
   // private final Solenoid singleSolenoid2 = new Solenoid(
     // PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[1]);
-  private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
+  private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
+  BangBangController pressureController = new BangBangController();
 
   @Override
   public void robotInit() {
     compressor.disable();
+    //pressureController.setTolerance(5);
   }
 
   @Override
@@ -79,9 +83,11 @@ public class Robot extends TimedRobot {
   boolean pistonForward2 = false;
   boolean piston3Forward = false;
   boolean compressorEnabled = false;
-
+  double pressure = 0;
   @Override
   public void testPeriodic() {
+    pressure = compressor.getPressure(); 
+    System.out.println(pressure);
     //arm.set(-Math.pow(controller.getLeftY(), 3));
 
     if (controller.getRightBumperPressed()) {
@@ -110,12 +116,18 @@ public class Robot extends TimedRobot {
       // System.out.println("Enabling solenoid: " + piston3Forward);
         // singleSolenoid2.set(piston3Forward);
     // }
-    if (controller.getBButtonPressed()) {
-      compressorEnabled = !compressorEnabled;
-      if (compressorEnabled)
-        compressor.enableDigital();
-      else
+     if (compressorEnabled){
+        pressureController.calculate(pressure, 50);
+        if(pressureController.atSetpoint()){
+          compressor.enableDigital();
+        }else{
+          compressor.disable();
+        }
+     } else{
         compressor.disable();
     }
+    if (controller.getBButtonPressed()) {
+      compressorEnabled = !compressorEnabled;
   }
+}
 }

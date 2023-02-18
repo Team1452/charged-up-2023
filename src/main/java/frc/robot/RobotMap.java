@@ -9,6 +9,6 @@ public class RobotMap {
 
     public static int PIGEON = 10;
 
-    public static int[] SOLENOID = {0, 1};
-    public static int[] SOLENOID2 = {2, 3};
+    public static int[] SOLENOID = {2, 5};
+    public static int[] SOLENOID2 = {3, 4};
 }
