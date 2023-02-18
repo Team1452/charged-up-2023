@@ -113,6 +113,11 @@ public class Robot extends TimedRobot {
   boolean pistonForward2 = false;
   @Override
   public void testPeriodic() { 
+    var speed = Math.pow(-controller.getLeftY(), 3);
+    var rot = Math.pow(controller.getRightX(), 3);
+
+    // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
+    //drive.differentialDrive(speed, rot);
     if(controlMode){
     
     if(controller.getBButtonPressed()){
@@ -145,9 +150,9 @@ public class Robot extends TimedRobot {
     }
 //extenderSlewLimiter.calculate(0.2)
 //Then here we get robot pose to object and from that decide how far arm needs to extend
-    if(controller.getLeftBumper()){
+    if(controller.getLeftTriggerAxis()>0.5){
       extender.set(0.2);
-    }else if(controller.getRightBumper()){
+    }else if(controller.getRightTriggerAxis()>0.5){
       extender.set(-0.2);
     }else{
       extender.set(0);
