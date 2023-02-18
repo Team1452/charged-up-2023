@@ -120,15 +120,14 @@ public class Robot extends TimedRobot {
     //drive.differentialDrive(speed, rot);
     if(controlMode){
     
-    if(controller.getBButtonPressed()){
+    if(controller.getYButtonPressed()){
       pos=pos+5;
     }
-    if(controller.getXButtonPressed()){
+    if(controller.getAButtonPressed()){
       pos=pos-5;
     }
   }else{
     pos = controller.getLeftY();
-    
   }
     /*if(controller.getBackButtonPressed()){
       //controlMode = !controlMode;
@@ -139,9 +138,7 @@ public class Robot extends TimedRobot {
     //System.out.println("reference is: " + pos);
     armPID.setReference(pos, CANSparkMax.ControlType.kPosition);
 
-    if(controller.getAButtonPressed()){
-    }
-    if(controller.getYButtonPressed()){
+    if(controller.getXButtonPressed()){
       double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH + armEncoder.getPosition()*Constants.ExtenderConstants.METERS_PER_ROTATION;
       double angle = Math.atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT-Constants.ArmConstants.ARM_HEIGHT)/ armLength);
       System.out.println("armLength: " + armLength);
