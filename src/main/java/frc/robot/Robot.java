@@ -21,6 +21,7 @@ import com.revrobotics.SparkMaxRelativeEncoder;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.Vector;
+import edu.wpi.first.math.controller.BangBangController;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -52,7 +53,6 @@ public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
-  private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private SparkMaxPIDController armPID;
   RelativeEncoder armEncoder = arm.getEncoder();
@@ -109,6 +109,8 @@ public class Robot extends TimedRobot {
   boolean compressorEnabled = false;
   
   boolean controlMode = true; 
+  double pressure = 0;
+  boolean pistonForward2 = false;
   @Override
   public void testPeriodic() { 
     if(controlMode){
@@ -123,10 +125,10 @@ public class Robot extends TimedRobot {
     pos = controller.getLeftY();
     
   }
-    if(controller.getBackButtonPressed()){
+    /*if(controller.getBackButtonPressed()){
       //controlMode = !controlMode;
       System.out.println("extender Encoder values are " + extenderEncoder.getPosition());
-    }
+    }*/
     //System.out.println("arm Encoder values are " + armEncoder.getPosition());
     //System.out.println("arm Vel values are " + armEncoder.getVelocity());
     //System.out.println("reference is: " + pos);
@@ -191,7 +193,7 @@ public class Robot extends TimedRobot {
      } else{
         compressor.disable();
     }
-    if (controller.getBButtonPressed()) {
+    if (controller.getBackButtonPressed()) {
       compressorEnabled = !compressorEnabled;
   }
   }
