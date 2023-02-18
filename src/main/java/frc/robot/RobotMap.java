@@ -11,7 +11,5 @@ public class RobotMap {
     public static int PIGEON = 10;
 
     public static int[] SOLENOID = {0, 1};
-    public static int ABSOLUTE_FORWARD_LIMIT = 125;
-    public static int ABSOLUTE_BACK_LIMIT = 0;
     public static int ANGLE_CONVERSION = -5;
 }

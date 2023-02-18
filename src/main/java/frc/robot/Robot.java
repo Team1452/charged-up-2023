@@ -40,17 +40,18 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
-  //private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
   private SparkMaxPIDController armPID;
   private RelativeEncoder armEncoder;
-  private RelativeEncoder extenderEncoder;
+  double pos;
+  //private RelativeEncoder extenderEncoder;
   @Override
   public void robotInit() {
     compressor.disable();
@@ -58,16 +59,18 @@ public class Robot extends TimedRobot {
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
     extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
     armEncoder = arm.getEncoder();
-    extenderEncoder = arm.getEncoder();
+    //extenderEncoder = arm.getEncoder();
     armPID = arm.getPIDController();
-     
-    armPID.setP(0.001);
-    armPID.setI(0.001);
-    armPID.setD(0);
-    // armPID.setOutputRange(-1, 1);
+    pos = armEncoder.getPosition();
+    armPID.setP(0.1);
+    armPID.setI(0.0001);
+    armPID.setD(0.001);
+    armPID.setOutputRange(-1, 1);
+    armPID.setIZone(0);
+    armPID.setFF(0);
     // sets absolute encoder limits for arm
-    // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, RobotMap.ABSOLUTE_FORWARD_LIMIT);
-    // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, RobotMap.ABSOLUTE_BACK_LIMIT);
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float)Constants.armConstants.MIN_ROTATION);
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float)Constants.armConstants.MAX_ROTATION);
     //armPID.setReference(0, CANSparkMax.ControlType.kPosition);
   }
 
@@ -96,12 +99,38 @@ public class Robot extends TimedRobot {
 
   boolean pistonForward = false;
   boolean compressorEnabled = false;
+  
+  boolean controlMode = true; 
   @Override
-  public void testPeriodic() {
-
+  public void testPeriodic() { 
+    if(controlMode){
+    
+    if(controller.getBButtonPressed()){
+      pos=pos+5;
+    }
+    if(controller.getXButtonPressed()){
+      pos=pos-5;
+    }
+  }else{
+    pos = controller.getLeftY();
+    
+  }
+    if(controller.getBackButtonPressed()){
+      controlMode = !controlMode;
+    }
     System.out.println("arm Encoder values are " + armEncoder.getPosition());
     System.out.println("arm Vel values are " + armEncoder.getVelocity());
-    armPID.setReference(Math.pow(controller.getLeftY(), 3), CANSparkMax.ControlType.kPosition);
+    System.out.println("reference is: " + pos);
+    armPID.setReference(pos, CANSparkMax.ControlType.kPosition);
+
+    if(controller.getAButtonPressed()){
+      armEncoder.setPosition(0);
+    }
+    if(controller.getYButtonPressed()){
+      double angle = Math.atan(Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT/Constants.ArmConstants.ARM_LENGTH);
+      
+      pos = 
+    }
     if(controller.getLeftBumper()){
       extender.set(extenderSlewLimiter.calculate(0.2));
     }else if(controller.getRightBumper()){
