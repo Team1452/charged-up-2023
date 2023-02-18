@@ -43,7 +43,12 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Robot extends TimedRobot {
-  
+  private final DoubleSolenoid rightSolenoid = new DoubleSolenoid(
+    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
+  private final DoubleSolenoid leftSolenoid = new DoubleSolenoid(
+    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID2[0], RobotMap.SOLENOID2[1]);
+  private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
+  BangBangController pressureController = new BangBangController();
   private final XboxController controller = new XboxController(0);
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
@@ -146,22 +151,48 @@ public class Robot extends TimedRobot {
       extender.set(0);
     }
 
-    //Pneumatics stuff
-    // if (controller.getAButtonPressed()) {
-    //   pistonForward = !pistonForward;
-    //   System.out.println("Enabling solenoid: " + pistonForward);
-    //   if (pistonForward)
-    //     solenoid.set(Value.kForward);
-    //   else
-    //     solenoid.set(Value.kReverse);
-    // }
+    pressure = compressor.getPressure(); 
+    System.out.println(pressure);
+    //arm.set(-Math.pow(controller.getLeftY(), 3));
 
-    // if (controller.getBButtonPressed()) {
-    //   compressorEnabled = !compressorEnabled;
-    //   if (compressorEnabled)
-    //     compressor.enableDigital();
-    //   else
-    //     compressor.disable();
+    if (controller.getRightBumperPressed()) {
+      pistonForward = !pistonForward;
+      System.out.println("Enabling solenoid: " + pistonForward);
+      if (pistonForward)
+        rightSolenoid.set(Value.kForward);
+      else
+        rightSolenoid.set(Value.kReverse);
+    }
+    if (controller.getLeftBumperPressed()) {
+      pistonForward2 = !pistonForward2;
+      System.out.println("Enabling solenoid: " + pistonForward2);
+      if (pistonForward2)
+        leftSolenoid.set(Value.kForward);
+      else
+        leftSolenoid.set(Value.kReverse);
+    }
+    // if (controller.getYButton()) {
+      // piston2Forward = !piston2Forward;
+      // System.out.println("Enabling solenoid: " + piston2Forward);
+        // singleSolenoid.set(piston2Forward);
     // }
+    // if (controller.getAButton()) {
+      // piston3Forward = !piston3Forward;
+      // System.out.println("Enabling solenoid: " + piston3Forward);
+        // singleSolenoid2.set(piston3Forward);
+    // }
+     if (compressorEnabled){
+        pressureController.calculate(pressure, 50);
+        if(pressureController.atSetpoint()){
+          compressor.enableDigital();
+        }else{
+          compressor.disable();
+        }
+     } else{
+        compressor.disable();
+    }
+    if (controller.getBButtonPressed()) {
+      compressorEnabled = !compressorEnabled;
+  }
   }
 }
