@@ -13,8 +13,8 @@ public class TurnToAngle extends PIDCommand {
             drive::getHeading,
             targetAngleDegrees,
             output -> {
-                System.out.println("Current angle: " + drive.getHeading() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
-                drive.differentialDrive(0, -output);
+                // System.out.println("Current angle: " + drive.getHeading() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
+                drive.differentialDrive(0, output);
             },
             drive);
 

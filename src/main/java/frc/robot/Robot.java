@@ -43,12 +43,16 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
+import frc.robot.commands.MoveToPose;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.Vec2;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
+import org.json.*;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
@@ -72,6 +76,8 @@ public class Robot extends TimedRobot {
   private final Map<WsContext, String> clients = new ConcurrentHashMap<>();
   private int userNumber = 0;
 
+  Command currentMoveToPoseCommand = null;
+
   public void initWS() {
     app = Javalin.create().start(7070);
   
@@ -79,6 +85,46 @@ public class Robot extends TimedRobot {
       ws.onConnect(ctx -> {
         String username = "User" + userNumber++;
         clients.put(ctx, username);
+      });
+
+      ws.onMessage(msg -> {
+        String message = msg.message();
+        System.out.println("Got message: " + message);
+        JSONObject json = new JSONObject(message);
+
+        double targetYaw = json.getDouble("yaw");
+
+        JSONArray position = json.getJSONArray("position");
+        double targetX = Units.inchesToMeters(position.getDouble(0));
+        double targetY = Units.inchesToMeters(position.getDouble(1));
+
+        Pose2d targetPose = new Pose2d(targetX, targetY, new Rotation2d(Math.toRadians(targetYaw)));
+        Pose2d currentPose = drive.getPose();
+        System.out.println("Got target pose: " + targetPose + "; current pose " + currentPose);
+
+
+        double facingAngle = Math.toDegrees(Math.atan2(
+          targetY - currentPose.getY(),
+          targetX - currentPose.getX()
+        ));
+
+        double distance = Math.hypot(
+          targetX - currentPose.getX(),
+          targetY - currentPose.getY()
+        );
+
+        System.out.println("turning to angle " + facingAngle + " deg, moving " + distance + " inches");
+        Command sequence = new SequentialCommandGroup(
+          new TurnToAngle(facingAngle, drive),
+          new MoveDistance(distance, drive),
+          new TurnToAngle(targetPose.getRotation().getDegrees(), drive)
+        );
+
+        sequence.schedule();
+        // if (currentMoveToPoseCommand != null)
+        //   currentMoveToPoseCommand.cancel();
+        // currentMoveToPoseCommand = new MoveToPose(targetPose, drive);
+        // currentMoveToPoseCommand.schedule();
       });
 
       ws.onClose(ctx -> {
@@ -94,7 +140,7 @@ public class Robot extends TimedRobot {
 
     targetAngleInput = tab.add("Target Angle (Deg)", 0).getEntry();
 
-    // initWS();
+    initWS();
   }
 
   private void broadcastMessage(String message) {
@@ -115,18 +161,32 @@ public class Robot extends TimedRobot {
     Command balance = new Balance(drive);
 
     drive.setIdleMode(IdleMode.kBrake);
+    drive.resetPosition();
 
-    Command sequence = new MoveDistance(Units.inchesToMeters(80), drive)
+    Command followRectangle = new MoveDistance(Units.inchesToMeters(80), drive)
       .andThen(new TurnToAngle(-90, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(60), drive))
       .andThen(new TurnToAngle(-180, drive))
       .andThen(new MoveDistance(Units.inchesToMeters(80), drive))
       .andThen(new TurnToAngle(-270, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(60), drive))
       .andThen(new TurnToAngle(0, drive));
 
-    System.out.println("Scheduling command");
-    sequence.schedule();
+    // Command turningTest = new TurnToAngle(-90, drive)
+    //   .andThen(new WaitCommand(1))
+    //   .andThen(new TurnToAngle(-180, drive))
+    //   .andThen(new WaitCommand(1))
+    //   .andThen(new TurnToAngle(-270, drive))
+    //   .andThen(new WaitCommand(1))
+    //   .andThen(new TurnToAngle(0, drive))
+    //   .andThen(drive::resetPosition)
+    //   .andThen(followRectangle);
+
+
+    // Command goToPointAndFollowRectangle = new MoveToPose(new Pose2d(-10, -10, new Rotation2d(0)), drive);
+
+    // System.out.println("Scheduling command");
+    // followRectangle.schedule();
 
 
 
@@ -142,12 +202,17 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     // Run currently schedule commands
+    drive.updateOdometry();
     CommandScheduler.getInstance().run();
   }
 
   @Override
   public void autonomousExit() {
     System.out.println("Setting idle mode");
+    if (currentMoveToPoseCommand != null) {
+      currentMoveToPoseCommand.cancel();
+    }
+    drive.differentialDrive(0, 0);
     drive.setIdleMode(IdleMode.kCoast);
   }
 

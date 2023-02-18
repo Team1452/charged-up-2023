@@ -17,15 +17,18 @@ public class MoveDistance extends PIDCommand {
             drive::getPosition,
             drive.getPosition() + distanceMeters,
             output -> {
-                System.out.println("MoveDistance: position is " 
-                    + Units.metersToInches(drive.getPosition()) 
-                    + " inches, target is " + Units.metersToInches(distanceMeters));
+                // System.out.println("MoveDistance: position is " 
+                //     + Units.metersToInches(drive.getPosition()) 
+                //     + " inches, target is " + Units.metersToInches(distanceMeters)
+                //     + " moving with speed " + output);
                 drive.differentialDrive(output, 0);
             },
             drive);
         
         this.drive = drive;
         this.distanceMeters = distanceMeters;
+
+        this.m_controller.setIntegratorRange(-0.05, 0.05);
 
         getController()
             .setTolerance(0.001); // TODO: Move to constants

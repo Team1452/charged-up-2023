@@ -106,9 +106,9 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public void differentialDrive(double speed, double turn) {
-    // Positive turn turns right, negative turns left
-    setWithLimit(left, speed + turn);
-    setWithLimit(right, speed - turn);
+    // CCW is positive, CW is negative
+    setWithLimit(left, speed - turn);
+    setWithLimit(right, speed + turn);
   }
 
   /** Updates the field-relative position. */
@@ -148,6 +148,7 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public void resetPosition() {
+    gyro.reset();
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
   }
