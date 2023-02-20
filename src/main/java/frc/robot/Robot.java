@@ -34,8 +34,8 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
 
-  private final CANSparkMax arm = new CANSparkMax(15, MotorType.kBrushed);
-  private final CANSparkMax joint = new CANSparkMax(12, MotorType.kBrushed);
+  private final CANSparkMax arm = new CANSparkMax(15, MotorType.kBrushless);
+  private final CANSparkMax joint = new CANSparkMax(12, MotorType.kBrushless);
   private final DoubleSolenoid solenoid1 = new DoubleSolenoid(
     PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_1[0], RobotMap.SOLENOID_1[1]);
   private final DoubleSolenoid solenoid2 = new DoubleSolenoid(
@@ -78,7 +78,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
-    double armSpeed = -Math.pow(controller.getLeftY(), 3);
+    double armSpeed = Math.pow(controller.getLeftY(), 3);
     arm.set(armSpeed);
 
     double jointSpeed = -Math.pow(controller.getRightY(), 3);
