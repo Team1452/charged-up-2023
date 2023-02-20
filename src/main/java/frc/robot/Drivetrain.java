@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import com.ctre.phoenix.sensors.WPI_Pigeon2;
 import com.revrobotics.CANSparkMaxLowLevel;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
@@ -47,8 +48,10 @@ public class Drivetrain {
 
   private CANSparkMax[] motorsFromIds(int[] canIds) {
     CANSparkMax[] motors = new CANSparkMax[canIds.length];
-    for (int i = 0; i < canIds.length; i++)
+    for (int i = 0; i < canIds.length; i++) {
       motors[i] = new CANSparkMax(canIds[i], MotorType.kBrushless);
+      motors[i].setIdleMode(IdleMode.kBrake);
+    }
     return motors;
   }
 

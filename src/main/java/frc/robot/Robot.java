@@ -18,6 +18,7 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkMaxAbsoluteEncoder;
 import com.revrobotics.SparkMaxPIDController;
 import com.revrobotics.SparkMaxRelativeEncoder;
+import com.revrobotics.CANSparkMax.ControlType;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.Vector;
@@ -32,6 +33,7 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Encoder;
@@ -44,42 +46,65 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Robot extends TimedRobot {
-  private final DoubleSolenoid rightSolenoid = new DoubleSolenoid(
-    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
-  private final DoubleSolenoid leftSolenoid = new DoubleSolenoid(
-    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID2[0], RobotMap.SOLENOID2[1]);
-  private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
-  BangBangController pressureController = new BangBangController();
   private final XboxController controller = new XboxController(0);
+
+  private final DoubleSolenoid rightSolenoid = new DoubleSolenoid(
+      PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_1[0], RobotMap.SOLENOID_1[1]);
+  private final DoubleSolenoid leftSolenoid = new DoubleSolenoid(
+      PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_2[0], RobotMap.SOLENOID_2[1]);
+
+  private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
+
+  private final BangBangController pressureController = new BangBangController();
+
+  // COUNTERCLOCKWISE is positive
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
-  private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.5,-0.5,0);
+
+  private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
+  private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
+
+  private final AnalogInput pressureSensor = new AnalogInput(0);
+
   private SparkMaxPIDController armPID;
-  RelativeEncoder armEncoder = arm.getEncoder();
-  RelativeEncoder extenderEncoder = arm.getEncoder();
-  double pos;
+  private SparkMaxPIDController extenderPID;
+
+  private final Drivetrain drivetrain = new Drivetrain(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+
+  private final RelativeEncoder armEncoder = arm.getEncoder();
+  private final RelativeEncoder extenderEncoder = arm.getEncoder();
+  
+  double armAngle;
+  double extenderPosition;
+
   @Override
   public void robotInit() {
     compressor.disable();
     arm.restoreFactoryDefaults();
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
     extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
-    //armEncoder = arm.getEncoder();
-    //extenderEncoder = arm.getEncoder();
+    // armEncoder = arm.getEncoder();
+    // extenderEncoder = arm.getEncoder();
     extenderEncoder.setPosition(0);
     armEncoder.setPosition(0);
     armPID = arm.getPIDController();
-    pos = armEncoder.getPosition();
+    armAngle = armEncoder.getPosition();
+
+    extenderEncoder.setPosition(0);
+    extenderPID = extender.getPIDController();
+    extenderPosition = extenderEncoder.getPosition();
+
     armPID.setP(0.1);
     armPID.setI(0.0001);
     armPID.setD(0.001);
     armPID.setOutputRange(-1, 1);
     armPID.setIZone(0);
     armPID.setFF(0);
+
     // sets absolute encoder limits for arm
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float)Constants.ArmConstants.MIN_ROTATION);
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float)Constants.ArmConstants.MAX_ROTATION);
-    //armPID.setReference(0, CANSparkMax.ControlType.kPosition);
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ArmConstants.MIN_ROTATION);
+    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ArmConstants.MAX_ROTATION);
+    // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
   }
 
   @Override
@@ -90,113 +115,94 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
 
   }
+
   final PhotonCamera camera = new PhotonCamera(Constants.VisionConstants.cameraName);
-
-
 
   @Override
   public void teleopPeriodic() {
-    //var result = camera.getLatestResult();
-    //PhotonTrackedTarget target = result.getBestTarget();
-    //double armHeight = Math.tan()
+    // var result = camera.getLatestResult();
+    // PhotonTrackedTarget target = result.getBestTarget();
+    // double armHeight = Math.tan()
   }
 
   @Override
   public void testInit() {
+    leftSolenoid.set(Value.kOff); // Off by default
+    rightSolenoid.set(Value.kOff);
   }
 
   boolean pistonForward = false;
   boolean compressorEnabled = false;
-  
-  boolean controlMode = true; 
+
+  boolean controlMode = true;
   double pressure = 0;
   boolean pistonForward2 = false;
+
   @Override
-  public void testPeriodic() { 
-    var speed = Math.pow(-controller.getLeftY(), 3);
-    var rot = Math.pow(controller.getRightX(), 3);
+  public void testPeriodic() {
+    // DRIVE
+    // Controller forward is negative
+    double speed = Math.pow(-controller.getLeftY(), 3.0);
+    double turn = Math.pow(controller.getRightX(), 3.0);
 
-    // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-    //drive.differentialDrive(speed, rot);
-    if(controlMode){
-    
-    if(controller.getYButtonPressed()){
-      pos=pos+5;
-    }
-    if(controller.getAButtonPressed()){
-      pos=pos-5;
-    }
-  }else{
-    pos = controller.getLeftY();
-  }
-    /*if(controller.getBackButtonPressed()){
-      //controlMode = !controlMode;
-      System.out.println("extender Encoder values are " + extenderEncoder.getPosition());
-    }*/
-    //System.out.println("arm Encoder values are " + armEncoder.getPosition());
-    //System.out.println("arm Vel values are " + armEncoder.getVelocity());
-    //System.out.println("reference is: " + pos);
-    armPID.setReference(pos, CANSparkMax.ControlType.kPosition);
+    drivetrain.differentialDrive(speed, turn);
 
-    if(controller.getXButtonPressed()){
-      double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH + armEncoder.getPosition()*Constants.ExtenderConstants.METERS_PER_ROTATION;
-      double angle = Math.atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT-Constants.ArmConstants.ARM_HEIGHT)/ armLength);
-      System.out.println("armLength: " + armLength);
-      System.out.println("arm angle: " + angle);
-      pos = Constants.ArmConstants.ARM_GEARING*angle;
-    }
-//extenderSlewLimiter.calculate(0.2)
-//Then here we get robot pose to object and from that decide how far arm needs to extend
-    if(controller.getLeftTriggerAxis()>0.5){
-      extender.set(0.2);
-    }else if(controller.getRightTriggerAxis()>0.5){
-      extender.set(-0.2);
-    }else{
-      extender.set(0);
-    }
+    // EXTENDER    
+    extenderPosition += extenderSlewLimiter.calculate(controller.getLeftTriggerAxis())
+      - extenderSlewLimiter.calculate(controller.getRightTriggerAxis());
+    extenderPID.setReference(extenderPosition, ControlType.kPosition);
 
-    pressure = compressor.getPressure(); 
-    System.out.println(pressure);
-    //arm.set(-Math.pow(controller.getLeftY(), 3));
+    // ARM
+    if (controller.getLeftBumperPressed()) {
+      // Turn counterclockwise
+      armAngle += 1;
+    }
 
     if (controller.getRightBumperPressed()) {
+      // Turn clockwise
+      armAngle -= 1;
+    }
+
+    if (controller.getXButtonPressed()) {
+      // Align arm with level two game node height 
+      double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
+          + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
+      double angle = Math
+          .atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT - Constants.ArmConstants.ARM_HEIGHT) / armLength);
+      System.out.println("armLength: " + armLength);
+      System.out.println("arm angle: " + angle);
+      armAngle = Constants.ArmConstants.ARM_GEARING * angle;
+    }
+
+    armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
+
+    // COMPRESSOR
+    if (compressorEnabled) {
+      pressureController.calculate(pressure, 60);
+      if (pressureController.atSetpoint()) {
+        compressor.enableDigital();
+      } else {
+        compressor.disable();
+      }
+    } else {
+      compressor.disable();
+    }
+
+    if (controller.getAButtonPressed()) {
+      compressorEnabled = !compressorEnabled;
+    }
+
+    // PISTON
+    if (controller.getYButtonPressed()) {
       pistonForward = !pistonForward;
       System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward)
-        rightSolenoid.set(Value.kForward);
-      else
-        rightSolenoid.set(Value.kReverse);
-    }
-    if (controller.getLeftBumperPressed()) {
-      pistonForward2 = !pistonForward2;
-      System.out.println("Enabling solenoid: " + pistonForward2);
-      if (pistonForward2)
-        leftSolenoid.set(Value.kForward);
-      else
+      if (pistonForward) {
         leftSolenoid.set(Value.kReverse);
+        rightSolenoid.set(Value.kForward);
+      } else {
+        leftSolenoid.set(Value.kForward);
+        rightSolenoid.set(Value.kReverse);
+      }
     }
-    // if (controller.getYButton()) {
-      // piston2Forward = !piston2Forward;
-      // System.out.println("Enabling solenoid: " + piston2Forward);
-        // singleSolenoid.set(piston2Forward);
-    // }
-    // if (controller.getAButton()) {
-      // piston3Forward = !piston3Forward;
-      // System.out.println("Enabling solenoid: " + piston3Forward);
-        // singleSolenoid2.set(piston3Forward);
-    // }
-     if (compressorEnabled){
-        pressureController.calculate(pressure, 50);
-        if(pressureController.atSetpoint()){
-          compressor.enableDigital();
-        }else{
-          compressor.disable();
-        }
-     } else{
-        compressor.disable();
-    }
-    if (controller.getBackButtonPressed()) {
-      compressorEnabled = !compressorEnabled;
-  }
   }
 }

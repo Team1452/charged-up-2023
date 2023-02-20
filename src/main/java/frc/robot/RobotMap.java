@@ -10,7 +10,7 @@ public class RobotMap {
     public static int MOTOR_EXTEND = 15;
     public static int PIGEON = 10;
 
-    public static int[] SOLENOID = {2, 5};
-    public static int[] SOLENOID2 = {3, 4};
+    public static int[] SOLENOID_1 = {2, 5};
+    public static int[] SOLENOID_2 = {3, 4};
     public static int ANGLE_CONVERSION = -5;
 }
