@@ -58,6 +58,10 @@ public class PhotonCameraWrapper {
                                 .cameraName); // Change the name of your camera here to whatever it is in the
         System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
 
+        if (photonCamera == null) {
+            // Continually ping photoncamera every 500ms to connect
+        }
+
         // Create pose estimator
         photonPoseEstimator =
                 new PhotonPoseEstimator(

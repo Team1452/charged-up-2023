@@ -204,6 +204,21 @@ public class Robot extends TimedRobot {
     // Run currently schedule commands
     drive.updateOdometry();
     CommandScheduler.getInstance().run();
+
+    Pose2d pose = drive.getPose();
+
+    if (tick % 5 == 0) {
+      String json = String.format("{"
+        + "\"position\": [%f, %f],"
+        + "\"yaw\": %f"
+        + "}",
+        Units.metersToInches(pose.getX()),
+        Units.metersToInches(pose.getY()),
+        pose.getRotation().getRadians()
+      );
+      broadcastMessage(json);
+    }
+
   }
 
   @Override
@@ -298,8 +313,6 @@ public class Robot extends TimedRobot {
     // }
 
     // double position = drive.getPosition();
-
-
 
     // if (tick % 20 == 0) {
     //   System.out.println("Relative pose: " + relativePose);
