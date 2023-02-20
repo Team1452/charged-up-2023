@@ -7,12 +7,12 @@ Extender:
     - Right trigger decreases position
 
 Arm:
-    - X button is counterclockwise
-    - B button is clockwise
+    - Left bumper is counterclockwise
+    - Right bumper is clockwise
 
 Compressor:
     - If enabled, turn off/on to keep PSI at 50
-    - Enable/disable with B button
+    - Enable/disable with A button
 
 Piston:
-    - X button extends/retracts
+    - Y button extends/retracts

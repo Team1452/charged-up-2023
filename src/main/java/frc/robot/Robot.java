@@ -37,6 +37,7 @@ import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
@@ -61,8 +62,11 @@ public class Robot extends TimedRobot {
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
 
-  private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
+  private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
   private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
+
+  private final SlewRateLimiter driveSpeedLimiter = new SlewRateLimiter(0.05, -0.05, 0);
+  private final SlewRateLimiter turnSpeedLimiter = new SlewRateLimiter(0.05, -0.05, 0);
 
   private final AnalogInput pressureSensor = new AnalogInput(0);
 
@@ -73,6 +77,8 @@ public class Robot extends TimedRobot {
 
   private final RelativeEncoder armEncoder = arm.getEncoder();
   private final RelativeEncoder extenderEncoder = arm.getEncoder();
+
+  private final Joystick joystick = new Joystick(0);
 
   double armAngle;
   double extenderPosition;
@@ -105,6 +111,16 @@ public class Robot extends TimedRobot {
     arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ArmConstants.MIN_ROTATION);
     arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ArmConstants.MAX_ROTATION);
     // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
+
+    extenderPID.setP(0.1);
+    extenderPID.setI(0.0001);
+    extenderPID.setD(0.001);
+    extenderPID.setOutputRange(-1, 1);
+    extenderPID.setIZone(0);
+    extenderPID.setFF(0);
+
+    extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ExtenderConstants.MIN_ARM_LENGTH);
+    extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ExtenderConstants.MAX_ARM_LENGTH);
   }
 
   @Override
@@ -120,9 +136,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    // var result = camera.getLatestResult();
-    // PhotonTrackedTarget target = result.getBestTarget();
-    // double armHeight = Math.tan()
   }
 
   @Override
@@ -141,26 +154,41 @@ public class Robot extends TimedRobot {
   @Override
   public void testPeriodic() {
     // DRIVE
+
     // Controller forward is negative
     double speed = Math.pow(-controller.getLeftY(), 3.0);
     double turn = Math.pow(controller.getRightX(), 3.0);
 
+    // System.out.println("Joystick y: " + joystick.getY() + " ; joystick x: " + joystick.getX());
+    // double joystickY = Math.signum(joystick.getY()) * Math.max(0, Math.abs(joystick.getY()) - 0.1);
+    // double joystickX = Math.signum(joystick.getX()) * Math.max(0, Math.abs(joystick.getX()) - 0.1);
+    // speed = driveSpeedLimiter.calculate(-joystickY);
+    // turn = turnSpeedLimiter.calculate(joystickX);
+    // System.out.println("Speed: " + speed + "; turn: " + turn);
+
     drivetrain.differentialDrive(speed, turn);
 
     // EXTENDER
+
+    // TODO: Change to PID
+    double extenderSpeed = (controller.getLeftTriggerAxis()
+        - controller.getRightTriggerAxis()) / 3;
+    extender.set(extenderPosition);
+
     extenderPosition += extenderSlewLimiter.calculate(controller.getLeftTriggerAxis())
         - extenderSlewLimiter.calculate(controller.getRightTriggerAxis());
-    extenderPID.setReference(extenderPosition, ControlType.kPosition);
+    extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+    System.out.println("Extender position: " + extenderPosition);
 
     // ARM
-    if (controller.getLeftBumperPressed()) {
+    if (controller.getLeftBumper()) {
       // Turn counterclockwise
-      armAngle += 1;
+      armAngle += 0.3;
     }
 
-    if (controller.getRightBumperPressed()) {
+    if (controller.getRightBumper()) {
       // Turn clockwise
-      armAngle -= 1;
+      armAngle -= 0.3;
     }
 
     if (controller.getXButtonPressed()) {
