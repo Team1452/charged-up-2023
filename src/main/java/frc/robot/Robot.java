@@ -73,7 +73,7 @@ public class Robot extends TimedRobot {
 
   private final RelativeEncoder armEncoder = arm.getEncoder();
   private final RelativeEncoder extenderEncoder = arm.getEncoder();
-  
+
   double armAngle;
   double extenderPosition;
 
@@ -147,9 +147,9 @@ public class Robot extends TimedRobot {
 
     drivetrain.differentialDrive(speed, turn);
 
-    // EXTENDER    
+    // EXTENDER
     extenderPosition += extenderSlewLimiter.calculate(controller.getLeftTriggerAxis())
-      - extenderSlewLimiter.calculate(controller.getRightTriggerAxis());
+        - extenderSlewLimiter.calculate(controller.getRightTriggerAxis());
     extenderPID.setReference(extenderPosition, ControlType.kPosition);
 
     // ARM
@@ -164,7 +164,7 @@ public class Robot extends TimedRobot {
     }
 
     if (controller.getXButtonPressed()) {
-      // Align arm with level two game node height 
+      // Align arm with level two game node height
       double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
           + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
       double angle = Math
@@ -178,6 +178,11 @@ public class Robot extends TimedRobot {
 
     // COMPRESSOR
     if (compressorEnabled) {
+      // Calculate pressure from analog input
+      // (from REV analog sensor datasheet)
+      double vOut = pressureSensor.getAverageVoltage();
+      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
+
       pressureController.calculate(pressure, 60);
       if (pressureController.atSetpoint()) {
         compressor.enableDigital();

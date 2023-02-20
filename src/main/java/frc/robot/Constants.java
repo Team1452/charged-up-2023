@@ -6,7 +6,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 
 public class Constants {
-    static class ExtenderConstants{
+    static class ExtenderConstants {
         static final double EXTENDER_GEARING = 1/5;
         static final double MAX_EXTENDER_ROTATION = 0.0714285671710968; //I hate myself and I hate this number
         //this^ number is for the encoder rotations at max arm length 
@@ -15,15 +15,19 @@ public class Constants {
         static final double METERS_PER_ROTATION =  MAX_ARM_LENGTH / MAX_EXTENDER_ROTATION;
         
     }
-    static class ArmConstants{
+
+    static class ArmConstants {
         static final double ARM_GEARING = (65/12)*50;
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
         static final double MIN_ROTATION = Units.degreesToRadians(360-55);
         static final double MAX_ROTATION = Units.degreesToRadians(180+42);
     }
-    static class PenumaticConstants { 
-        static final double MAX_PRESSURE = 60;//PSI
+
+    static class PneumaticConstants { 
+        static final double MAX_PRESSURE = 60; // PSI
+        static final double ANALOG_VCC = 5; // VCC for analog input
     }
+
     static class DriveTrainConstants {
         static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
