@@ -22,6 +22,7 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
@@ -33,10 +34,14 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
 
-  private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
-  private final DoubleSolenoid solenoid = new DoubleSolenoid(
-    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
+  private final CANSparkMax arm = new CANSparkMax(15, MotorType.kBrushed);
+  private final CANSparkMax joint = new CANSparkMax(12, MotorType.kBrushed);
+  private final DoubleSolenoid solenoid1 = new DoubleSolenoid(
+    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_1[0], RobotMap.SOLENOID_1[1]);
+  private final DoubleSolenoid solenoid2 = new DoubleSolenoid(
+    PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_2[0], RobotMap.SOLENOID_2[1]);
   private final Compressor compressor = new Compressor(PneumaticsModuleType.CTREPCM);
+  private final AnalogInput pressureSensor = new AnalogInput(0);
 
   @Override
   public void robotInit() {
@@ -64,7 +69,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
-    solenoid.set(Value.kOff); // Off by default
+    solenoid1.set(Value.kOff); // Off by default
+    solenoid2.set(Value.kOff);
   }
 
   boolean pistonForward = false;
@@ -72,15 +78,22 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
-    arm.set(-Math.pow(controller.getLeftY(), 3));
+    double armSpeed = -Math.pow(controller.getLeftY(), 3);
+    arm.set(armSpeed);
+
+    double jointSpeed = -Math.pow(controller.getRightY(), 3);
+    joint.set(jointSpeed);
 
     if (controller.getAButtonPressed()) {
       pistonForward = !pistonForward;
       System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward)
-        solenoid.set(Value.kForward);
-      else
-        solenoid.set(Value.kReverse);
+      if (pistonForward) {
+        solenoid1.set(Value.kReverse);
+        solenoid2.set(Value.kForward);
+      } else {
+        solenoid1.set(Value.kForward);
+        solenoid2.set(Value.kReverse);
+      }
     }
 
     if (controller.getBButtonPressed()) {
@@ -90,5 +103,10 @@ public class Robot extends TimedRobot {
       else
         compressor.disable();
     }
+
+    double vout = pressureSensor.getAverageVoltage();
+    double vcc = 5; // Could be 3.33/needs to be measured?
+    double pressure = 250 * (vout/vcc) - 25;
+    System.out.printf("Voltage is %.3f, estimated pressure is %.3f PSI\n", vout, pressure);
   }
 }
