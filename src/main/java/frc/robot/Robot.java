@@ -115,10 +115,10 @@ public class Robot extends TimedRobot {
 
         System.out.println("turning to angle " + facingAngle + " deg, moving " + distance + " inches");
         Command sequence = new SequentialCommandGroup(
-          new TurnToAngle(facingAngle, drive),
-          new MoveDistance(distance, drive),
+          // new TurnToAngle(facingAngle, drive),
+          // new MoveDistance(distance, drive),
           new TurnToAngle(targetPose.getRotation().getDegrees(), drive)
-        );
+        ).withTimeout(5); // Kill if can't complete in 5s
 
         sequence.schedule();
         // if (currentMoveToPoseCommand != null)
@@ -201,7 +201,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
-    // Run currently schedule commands
+    // Run currently scheduled commands
     drive.updateOdometry();
     CommandScheduler.getInstance().run();
 

@@ -17,6 +17,7 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
+import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -34,7 +35,7 @@ public class DriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
-  private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
+  private final Gyro gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
   private final DifferentialDriveKinematics kinematics =
     new DifferentialDriveKinematics(Constants.DriveConstants.kTrackWidth);
@@ -93,10 +94,12 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public double getPitch() {
-    return gyro.getPitch();
+    return 0;
+    // return gyro.getPitch();
   }
 
   public double getHeading() {
+    // CW is positive, CCW is negative
     return gyro.getAngle();
   }
 
@@ -134,7 +137,7 @@ public class DriveSubsystem extends SubsystemBase {
     return poseEstimator.getEstimatedPosition();
   }
   
-  public WPI_Pigeon2 getGyro() {
+  public Gyro getGyro() {
     return gyro;
   }
 
