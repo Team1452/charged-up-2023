@@ -100,7 +100,17 @@ public class DriveSubsystem extends SubsystemBase {
 
   public double getHeading() {
     // CW is positive, CCW is negative
-    return gyro.getAngle();
+    double angle = gyro.getAngle();
+
+    return angle;
+
+    // if (angle > Math.PI) {
+    //   angle = -(Math.PI - (angle - Math.PI));
+    // } else {
+    //   angle = Math.PI - (-Math.PI - angle);
+    // }
+
+    // return angle;
   }
 
   private void setWithLimit(MotorController controller, double value) {

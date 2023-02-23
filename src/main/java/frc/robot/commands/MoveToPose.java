@@ -42,8 +42,15 @@ public class MoveToPose extends CommandBase {
 
     @Override
     public void end(boolean interrupted) {
-        if (command != null)
-            command.cancel();
+        if (interrupted) {
+            if (command != null)
+                command.cancel();
+        } else {
+            Pose2d currentPose = drive.getPose();
+            System.out.println("Exiting MoveToPose, target pose was " + pose + ", current pose is " + currentPose);
+            System.out.println("Killing motors");
+            drive.differentialDrive(0, 0);
+        }
     }
 
     @Override

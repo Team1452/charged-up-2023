@@ -37,9 +37,6 @@ public class TurnToAngle extends PIDCommand {
 
     @Override
     public void end(boolean interrupted) {
-        System.out.println("Exiting TurnToAngle, target was " + targetAngleDegrees + ", at " + drive.getHeading() + " deg, final output is " + getController().calculate(drive.getHeading()));
-        System.out.println("Killing motors");
-        drive.differentialDrive(0, 0);
     }
 
     @Override

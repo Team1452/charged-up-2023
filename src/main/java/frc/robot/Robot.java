@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.photonvision.EstimatedRobotPose;
@@ -48,6 +49,7 @@ import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.MoveToPose;
+import frc.robot.commands.MoveToPoseCurved;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.Vec2;
 import io.javalin.Javalin;
@@ -71,7 +73,7 @@ public class Robot extends TimedRobot {
 
   boolean targetingIntermediaryTranslation = true;
 
-  ShuffleboardTab tab = Shuffleboard.getTab("AprilTag Turning Test");
+  ShuffleboardTab tab = Shuffleboard.getTab("AprilTag Turning Test " + Math.random());
 
   private final Map<WsContext, String> clients = new ConcurrentHashMap<>();
   private int userNumber = 0;
@@ -102,25 +104,17 @@ public class Robot extends TimedRobot {
         Pose2d currentPose = drive.getPose();
         System.out.println("Got target pose: " + targetPose + "; current pose " + currentPose);
 
+        // System.out.println("turning to angle " + facingAngle + " deg, moving " + distance + " inches");
+        // Command sequence = new SequentialCommandGroup(
+        //   // new TurnToAngle(facingAngle, drive),
+        //   // new MoveDistance(distance, drive),
+        //   new TurnToAngle(targetPose.getRotation().getDegrees(), drive)
+        // ).withTimeout(5); // Kill if can't complete in 5s
 
-        double facingAngle = Math.toDegrees(Math.atan2(
-          targetY - currentPose.getY(),
-          targetX - currentPose.getX()
-        ));
+        // Command moveToPoseCurved = new MoveToPoseCurved(targetPose, drive, this);
+        Command moveToPose = new MoveToPose(targetPose, drive);
 
-        double distance = Math.hypot(
-          targetX - currentPose.getX(),
-          targetY - currentPose.getY()
-        );
-
-        System.out.println("turning to angle " + facingAngle + " deg, moving " + distance + " inches");
-        Command sequence = new SequentialCommandGroup(
-          // new TurnToAngle(facingAngle, drive),
-          // new MoveDistance(distance, drive),
-          new TurnToAngle(targetPose.getRotation().getDegrees(), drive)
-        ).withTimeout(5); // Kill if can't complete in 5s
-
-        sequence.schedule();
+        moveToPose.schedule();
         // if (currentMoveToPoseCommand != null)
         //   currentMoveToPoseCommand.cancel();
         // currentMoveToPoseCommand = new MoveToPose(targetPose, drive);
@@ -133,12 +127,23 @@ public class Robot extends TimedRobot {
     });
   }
 
+  public GenericEntry turningPidP, turningPidI, turningPidD;
+  public GenericEntry distancePidP, distancePidI, distancePidD;
+
   @Override
   public void robotInit() {
     tick = 0;
     drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
 
     targetAngleInput = tab.add("Target Angle (Deg)", 0).getEntry();
+
+    turningPidP = tab.add("Turning PID P", 0.01).getEntry();
+    turningPidI = tab.add("Turning PID I", 0.001).getEntry();
+    turningPidD = tab.add("Turning PID D", 0.0001).getEntry();
+
+    distancePidP = tab.add("Distance PID P", 0.1).getEntry();
+    distancePidI = tab.add("Distance PID I", 0.01).getEntry();
+    distancePidD = tab.add("Distance PID D", 0.001).getEntry();
 
     initWS();
   }
