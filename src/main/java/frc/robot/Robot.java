@@ -32,6 +32,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
@@ -43,6 +44,8 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
@@ -51,7 +54,8 @@ import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 
 public class Robot extends TimedRobot {
-  private final XboxController controller = new XboxController(0);
+  // private final XboxController controller = new XboxController(0);
+  private Joystick joystick = new Joystick(0);
   private DriveSubsystem drive;
   private int tick;
   private final PIDController balancer = new PIDController(0.001, 0, 0);
@@ -106,6 +110,9 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     tick += 1;
+
+    drive.updateOdometry();
+
   }
 
   @Override
@@ -115,8 +122,56 @@ public class Robot extends TimedRobot {
     Command balance = new Balance(drive);
 
     drive.setIdleMode(IdleMode.kBrake);
+    // drive.resetPosition(new Pose2d(10, 0, Rotation2d.fromDegrees(-180)));
+    drive.resetPositionOdometry();
 
-    Command sequence = new MoveDistance(Units.inchesToMeters(80), drive)
+    Command rotateAngles = new SequentialCommandGroup(
+      new TurnToAngle(0, drive),
+      new WaitCommand(5),
+      new TurnToAngle(90, drive),
+      new WaitCommand(5),
+      new TurnToAngle(180, drive),
+      new WaitCommand(5),
+      new TurnToAngle(270, drive),
+      new WaitCommand(5),
+      new TurnToAngle(360, drive)
+    );
+
+    Command followRectangle = new SequentialCommandGroup(
+      new TurnToAngle(-180, drive),
+      new MoveDistance(Units.inchesToMeters(80), drive),
+      
+      new TurnToAngle(-90, drive),
+      new MoveDistance(Units.inchesToMeters(60), drive),
+
+      new TurnToAngle(0, drive),
+      new MoveDistance(Units.inchesToMeters(80), drive),
+
+      new TurnToAngle(90, drive),
+      new MoveDistance(Units.inchesToMeters(60), drive),
+
+      // Doesn't converge? TODO: Figure out why
+      new TurnToAngle(180, drive)
+    );
+
+    Command followRectangleOdom = new SequentialCommandGroup(
+      new TurnToAngle(0, drive),
+      new MoveDistance(Units.inchesToMeters(80), drive),
+      
+      new TurnToAngle(90, drive),
+      new MoveDistance(Units.inchesToMeters(60), drive),
+
+      new TurnToAngle(180, drive),
+      new MoveDistance(Units.inchesToMeters(80), drive),
+
+      new TurnToAngle(270, drive),
+      new MoveDistance(Units.inchesToMeters(60), drive),
+
+      new TurnToAngle(0, drive)
+    );
+    
+    
+    Command _followRectangleOld = new MoveDistance(Units.inchesToMeters(80), drive)
       .andThen(new TurnToAngle(-90, drive))
       .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
       .andThen(new TurnToAngle(-180, drive))
@@ -126,7 +181,11 @@ public class Robot extends TimedRobot {
       .andThen(new TurnToAngle(0, drive));
 
     System.out.println("Scheduling command");
-    sequence.schedule();
+    // sequence.schedule();
+
+    // rotateAngles.schedule();
+    followRectangle.schedule();
+    // followRectangleOdom.schedule();
 
 
 
@@ -143,6 +202,16 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     // Run currently schedule commands
     CommandScheduler.getInstance().run();
+
+    Pose2d poseOdom = drive.getPoseFromOdometry();
+    Pose2d poseOdomAndVision = drive.getPoseWithVisionMeasurements();
+
+    // Every 40ms
+    if (tick % 2 == 0) {
+      System.out.println("ODOMETRY ONLY: Angle: " + poseOdom.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdom.getX()) + ". Y: " + Units.metersToInches(poseOdom.getY()));
+      System.out.println("ODOMETRY + VISION: Angle: " + poseOdomAndVision.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdomAndVision.getX()) + ". Y: " + Units.metersToInches(poseOdomAndVision.getY()));
+    }
+
   }
 
   @Override
@@ -154,11 +223,20 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // Maybe switch to SlewRateLimiter or PID for smoother control?
-    var speed = Math.pow(-controller.getLeftY(), 3);
-    var rot = Math.pow(controller.getRightX(), 3);
+    var speed = Math.pow(-joystick.getY(), 3);
+    var rot = Math.pow(joystick.getX(), 3);
 
     // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-    drive.differentialDrive(speed, rot);
+    drive.differentialDrive(speed, -rot); // Flip CW/CCW
+
+    if (joystick.getTriggerPressed()) {
+      System.out.println("Trigger pressed, turning to 180 deg");
+      new TurnToAngle(180, drive).schedule();
+    }
+
+    if (joystick.getTrigger()) {
+      CommandScheduler.getInstance().run();
+    }
 
     // arm.set(controller.getLeftY());
 
@@ -175,7 +253,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
-    Pose2d initialPose = drive.getPose();
+    Pose2d initialPose = drive.getPoseFromOdometry();
     double yaw = initialPose.getRotation().getRadians();
     poseAhead = new Pose2d(
       initialPose.getX() + Math.cos(yaw) * Units.inchesToMeters(10),
@@ -183,7 +261,7 @@ public class Robot extends TimedRobot {
       initialPose.getRotation()
     );
 
-    drive.resetPosition();
+    // drive.resetPosition();
 
   }
 
@@ -196,7 +274,7 @@ public class Robot extends TimedRobot {
   public void testPeriodic() {
     drive.updateOdometry();
 
-    Pose2d pose = drive.getPose();
+    Pose2d pose = drive.getPoseFromOdometry();
     Pose2d aprilTagPose = PhotonCameraWrapper.tag04.pose.toPose2d();
 
     Rotation2d currentRotation = pose.getRotation();

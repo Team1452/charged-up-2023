@@ -38,6 +38,11 @@ public class MoveDistance extends PIDCommand {
     }
 
     @Override
+    public void end(boolean interrupted) {
+        drive.differentialDrive(0, 0);
+    }
+
+    @Override
     public boolean isFinished() {
         return getController().atSetpoint();
     }

@@ -42,12 +42,14 @@ public class DriveSubsystem extends SubsystemBase {
   private final DifferentialDrivePoseEstimator poseEstimator =
     new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), 0.0, 0.0, new Pose2d());
 
+  private final DifferentialDrivePoseEstimator poseEstimatorWithVision = new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), 0.0, 0.0, new Pose2d());
+
   private final PhotonCameraWrapper pcw;
 
   private final CANSparkMax[] leftMotors;
   private final CANSparkMax[] rightMotors;
 
-  private double maxVoltage = 0.15;
+  private double maxVoltage = 0.35;
 
   public void setMaxVoltage(double maxVoltage) {
       this.maxVoltage = maxVoltage;
@@ -116,6 +118,8 @@ public class DriveSubsystem extends SubsystemBase {
     // Left encoder is inverted
     poseEstimator.update(
             gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition());
+    poseEstimatorWithVision.update(
+            gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example
     // -- on
@@ -125,12 +129,16 @@ public class DriveSubsystem extends SubsystemBase {
 
     if (result.isPresent()) {
         EstimatedRobotPose camPose = result.get();
-        poseEstimator.addVisionMeasurement(
+        poseEstimatorWithVision.addVisionMeasurement(
                 camPose.estimatedPose.toPose2d(), camPose.timestampSeconds);
     }
   }
 
-  public Pose2d getPose() {
+  public Pose2d getPoseWithVisionMeasurements() {
+    return poseEstimatorWithVision.getEstimatedPosition();
+  }
+
+  public Pose2d getPoseFromOdometry() {
     return poseEstimator.getEstimatedPosition();
   }
   
@@ -147,7 +155,12 @@ public class DriveSubsystem extends SubsystemBase {
     return (-leftEncoder.getPosition() + rightEncoder.getPosition())/2;
   }
 
-  public void resetPosition() {
+  public void resetPosition(Pose2d pose) {
+    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition(), pose);
+  }
+
+  public void resetPositionOdometry() {
+    gyro.reset();
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
   }
