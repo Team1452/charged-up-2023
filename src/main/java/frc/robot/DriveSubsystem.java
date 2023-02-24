@@ -16,6 +16,7 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
@@ -35,7 +36,7 @@ public class DriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
-  private final Gyro gyro = new WPI_Pigeon2(RobotMap.PIGEON);
+  private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
   private final DifferentialDriveKinematics kinematics =
     new DifferentialDriveKinematics(Constants.DriveConstants.kTrackWidth);
@@ -124,6 +125,8 @@ public class DriveSubsystem extends SubsystemBase {
     setWithLimit(right, speed + turn);
   }
 
+  boolean updatedPoseWithAprilTags = false;
+
   /** Updates the field-relative position. */
   public void updateOdometry() {
     // Left encoder is inverted
@@ -160,9 +163,7 @@ public class DriveSubsystem extends SubsystemBase {
     return (-leftEncoder.getPosition() + rightEncoder.getPosition())/2;
   }
 
-  public void resetPosition() {
-    gyro.reset();
-    leftEncoder.setPosition(0);
-    rightEncoder.setPosition(0);
+  public void resetPosition(Pose2d initialPose) {
+    poseEstimator.resetPosition(gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition(), initialPose);
   }
 }

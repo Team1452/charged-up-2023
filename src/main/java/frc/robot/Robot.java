@@ -28,11 +28,13 @@ import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
@@ -79,6 +81,8 @@ public class Robot extends TimedRobot {
   private int userNumber = 0;
 
   Command currentMoveToPoseCommand = null;
+
+  private Joystick joystick = new Joystick(0);
 
   public void initWS() {
     app = Javalin.create().start(7070);
@@ -145,7 +149,7 @@ public class Robot extends TimedRobot {
     distancePidI = tab.add("Distance PID I", 0.01).getEntry();
     distancePidD = tab.add("Distance PID D", 0.001).getEntry();
 
-    initWS();
+    // initWS();
   }
 
   private void broadcastMessage(String message) {
@@ -156,7 +160,13 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotPeriodic() {
+    drive.updateOdometry();
     tick += 1;
+    if (tick % 20 == 0) {
+      Pose2d pose = drive.getPose();
+      System.out.println("Angle: " + pose.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(pose.getX()) + ", Y: " + Units.metersToInches(pose.getY()));
+    }
+
   }
 
   @Override
@@ -166,16 +176,26 @@ public class Robot extends TimedRobot {
     Command balance = new Balance(drive);
 
     drive.setIdleMode(IdleMode.kBrake);
-    drive.resetPosition();
+    drive.resetPosition(new Pose2d(0, 0, new Rotation2d(Math.toRadians(-180))));
 
-    Command followRectangle = new MoveDistance(Units.inchesToMeters(80), drive)
-      .andThen(new TurnToAngle(-90, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(60), drive))
-      .andThen(new TurnToAngle(-180, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(80), drive))
-      .andThen(new TurnToAngle(-270, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(60), drive))
-      .andThen(new TurnToAngle(0, drive));
+    Command followRectangle = new SequentialCommandGroup(
+      // new TurnToAngle(-180, drive),
+      // new MoveDistance(Units.inchesToMeters(80), drive),
+
+      // new TurnToAngle(-90, drive),
+      // new MoveDistance(Units.inchesToMeters(60), drive),
+
+      // new TurnToAngle(0, drive),
+      // new MoveDistance(Units.inchesToMeters(80), drive),
+
+      // new TurnToAngle(90, drive),
+      // new MoveDistance(Units.inchesToMeters(60), drive),
+
+      // new TurnToAngle(180, drive)
+
+      new TurnToAngle(0, drive)
+
+    );
 
     // Command turningTest = new TurnToAngle(-90, drive)
     //   .andThen(new WaitCommand(1))
@@ -191,7 +211,7 @@ public class Robot extends TimedRobot {
     // Command goToPointAndFollowRectangle = new MoveToPose(new Pose2d(-10, -10, new Rotation2d(0)), drive);
 
     // System.out.println("Scheduling command");
-    // followRectangle.schedule();
+    followRectangle.schedule();
 
 
 
@@ -208,20 +228,24 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     // Run currently scheduled commands
     drive.updateOdometry();
-    CommandScheduler.getInstance().run();
+    
+    // if (joystick.getRawButton(2)) {
+      CommandScheduler.getInstance().run();
+    // }
 
     Pose2d pose = drive.getPose();
 
     if (tick % 5 == 0) {
-      String json = String.format("{"
-        + "\"position\": [%f, %f],"
-        + "\"yaw\": %f"
-        + "}",
-        Units.metersToInches(pose.getX()),
-        Units.metersToInches(pose.getY()),
-        pose.getRotation().getRadians()
-      );
-      broadcastMessage(json);
+      // String json = String.format("{"
+      //   + "\"position\": [%f, %f],"
+      //   + "\"yaw\": %f"
+      //   + "}",
+      //   Units.metersToInches(pose.getX()),
+      //   Units.metersToInches(pose.getY()),
+      //   pose.getRotation().getRadians()
+      // );
+      // broadcastMessage(json);
+      // System.out.println("Angle: " + pose.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(pose.getX()) + ", Y: " + Units.metersToInches(pose.getY()));
     }
 
   }
@@ -238,12 +262,19 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    // Maybe switch to SlewRateLimiter or PID for smoother control?
-    var speed = Math.pow(-controller.getLeftY(), 3);
-    var rot = Math.pow(controller.getRightX(), 3);
+    double speed = -joystick.getY();
+    double turn = joystick.getX();
 
-    // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-    drive.differentialDrive(speed, rot);
+    speed = Math.copySign(Math.pow(speed, 3), speed);
+    turn = Math.copySign(Math.pow(turn, 3), turn);
+
+    drive.differentialDrive(speed, turn);
+
+    // Maybe switch to SlewRateLimiter or PID for smoother control?
+    // var speed = Math.pow(-controller.getLeftY(), 3);
+    // var rot = Math.pow(controller.getRightX(), 3);
+
+    // // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
 
     // arm.set(controller.getLeftY());
 
@@ -267,9 +298,6 @@ public class Robot extends TimedRobot {
       initialPose.getY() + Math.sin(yaw) * Units.inchesToMeters(10),
       initialPose.getRotation()
     );
-
-    drive.resetPosition();
-
   }
 
   String poseToString(Pose2d pose) {
@@ -279,8 +307,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
-    drive.updateOdometry();
-
     Pose2d pose = drive.getPose();
     Pose2d aprilTagPose = PhotonCameraWrapper.tag04.pose.toPose2d();
 
