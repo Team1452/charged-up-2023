@@ -11,7 +11,7 @@ public class TurnToAngle extends PIDCommand {
     public TurnToAngle(double targetAngleDegrees, DriveSubsystem drive) {
         super(
             new PIDController(DriveConstants.kTurnP, DriveConstants.kTurnI, DriveConstants.kTurnD),
-            () -> drive.getPoseWithVisionMeasurements().getRotation().getDegrees(),
+            () -> drive.getPoseFromOdometry().getRotation().getDegrees(),
             targetAngleDegrees,
             output -> {
                 System.out.println("Current angle: " + drive.getHeading() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
@@ -24,7 +24,7 @@ public class TurnToAngle extends PIDCommand {
         getController().enableContinuousInput(-180, 180);
 
         getController()
-            .setTolerance(DriveConstants.kTurnAngleToleranceDegrees, 0.0001);
+            .setTolerance(DriveConstants.kTurnAngleToleranceDegrees);
     }
 
     @Override

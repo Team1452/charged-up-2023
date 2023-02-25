@@ -73,7 +73,6 @@ public class PhotonCameraWrapper {
         // photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
         return photonPoseEstimator.update();
     }
-
     public List<PhotonTrackedTarget> getTargets() {
         var result = photonCamera.getLatestResult();
         List<PhotonTrackedTarget> targets = result.getTargets();

@@ -17,102 +17,132 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.photonvision.EstimatedRobotPose;
+import org.photonvision.PhotonCamera;
+import org.photonvision.PhotonUtils;
+import org.photonvision.targeting.PhotonTrackedTarget;
 
+import com.fasterxml.jackson.core.StreamReadCapability;
+import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
+import com.revrobotics.SparkMaxAbsoluteEncoder;
+import com.revrobotics.SparkMaxPIDController;
+import com.revrobotics.SparkMaxRelativeEncoder;
+import com.revrobotics.CANSparkMax.ControlType;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.math.Vector;
+import edu.wpi.first.math.controller.BangBangController;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.GenericEntry;
-import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
-import edu.wpi.first.wpilibj.shuffleboard.SimpleWidget;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.FunctionalCommand;
-import edu.wpi.first.wpilibj2.command.PIDCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
-import frc.robot.util.Vec2;
-import io.javalin.Javalin;
-import io.javalin.websocket.WsContext;
 
 public class Robot extends TimedRobot {
-  // private final XboxController controller = new XboxController(0);
-  private Joystick joystick = new Joystick(0);
-  private DriveSubsystem drive;
-  private int tick;
-  private final PIDController balancer = new PIDController(0.001, 0, 0);
-  // private final CANSparkMax arm = new CANSparkMax(18, MotorType.kBrushed);
-  // private final DoubleSolenoid solenoid = new DoubleSolenoid(
-    // PneumaticsModuleType.REVPH, RobotMap.SOLENOID[0], RobotMap.SOLENOID[1]);
-  private Javalin app = null;
+  private final XboxController controller = new XboxController(0);
 
-  RamseteController ramsete = new RamseteController(1, 0.5);
-  PIDController turnPid = new PIDController(0.1, 0.02, 0); // 0.002, 0.01);
+  private final DoubleSolenoid rightSolenoid = new DoubleSolenoid(
+      PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_1[0], RobotMap.SOLENOID_1[1]);
+  private final DoubleSolenoid leftSolenoid = new DoubleSolenoid(
+      PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_2[0], RobotMap.SOLENOID_2[1]);
 
-  PIDController distancePid = new PIDController(0.1, 0, 0.002);
+  private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
 
-  boolean targetingIntermediaryTranslation = true;
+  private final BangBangController pressureController = new BangBangController();
 
-  ShuffleboardTab tab = Shuffleboard.getTab("AprilTag Turning Test");
+  // COUNTERCLOCKWISE is positive
+  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
+  // private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
 
-  private final Map<WsContext, String> clients = new ConcurrentHashMap<>();
-  private int userNumber = 0;
+  private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
+  private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
 
-  public void initWS() {
-    app = Javalin.create().start(7070);
-  
-    app.ws("/debug", ws -> {
-      ws.onConnect(ctx -> {
-        String username = "User" + userNumber++;
-        clients.put(ctx, username);
-      });
+  private final SlewRateLimiter driveSpeedLimiter = new SlewRateLimiter(0.05, -0.05, 0);
+  private final SlewRateLimiter turnSpeedLimiter = new SlewRateLimiter(0.05, -0.05, 0);
 
-      ws.onClose(ctx -> {
-        clients.remove(ctx);
-      });
-    });
-  }
+  private final AnalogInput pressureSensor = new AnalogInput(0);
+
+  private SparkMaxPIDController armPID;
+  private SparkMaxPIDController extenderPID;
+
+  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+
+  private final RelativeEncoder armEncoder = arm.getEncoder();
+  private final RelativeEncoder extenderEncoder = arm.getEncoder();
+
+  private final Joystick joystick = new Joystick(0);
+
+  private int tick = 0;
+
+  double armAngle;
+  double extenderPosition;
 
   @Override
   public void robotInit() {
-    tick = 0;
-    drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+    compressor.disable();
+    // arm.restoreFactoryDefaults();
+    // arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    // // extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    // // armEncoder = arm.getEncoder();
+    // // extenderEncoder = arm.getEncoder();
+    // extenderEncoder.setPosition(0);
+    // armEncoder.setPosition(0);
+    // armPID = arm.getPIDController();
+    // armAngle = armEncoder.getPosition();
 
-    targetAngleInput = tab.add("Target Angle (Deg)", 0).getEntry();
+    // extenderEncoder.setPosition(0);
+    // // extenderPID = extender.getPIDController();
+    // extenderPosition = extenderEncoder.getPosition();
 
-    // initWS();
-  }
+    // armPID.setP(0.1);
+    // armPID.setI(0.0001);
+    // armPID.setD(0.001);
+    // armPID.setOutputRange(-1, 1);
+    // armPID.setIZone(0);
+    // armPID.setFF(0);
 
-  private void broadcastMessage(String message) {
-    for (WsContext ctx : clients.keySet()) {
-      ctx.send(message);
-    }
+    // // sets absolute encoder limits for arm
+    // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ArmConstants.MIN_ROTATION);
+    // arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ArmConstants.MAX_ROTATION);
+    // // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
+
+    // extenderPID.setP(0.1);
+    // extenderPID.setI(0);
+    // extenderPID.setD(0);
+    // extenderPID.setOutputRange(-1, 1);
+    // extenderPID.setIZone(0);
+    // extenderPID.setFF(0);
+
+    // extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ExtenderConstants.MAX_EXTENDER_ROTATION);
+    // extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, 0);
   }
 
   @Override
   public void robotPeriodic() {
     tick += 1;
-
-    drive.updateOdometry();
-
   }
 
   @Override
@@ -126,14 +156,12 @@ public class Robot extends TimedRobot {
     drive.resetPositionOdometry();
 
     Command rotateAngles = new SequentialCommandGroup(
-      new TurnToAngle(0, drive),
-      new WaitCommand(5),
       new TurnToAngle(90, drive),
-      new WaitCommand(5),
+      new WaitCommand(1),
       new TurnToAngle(180, drive),
-      new WaitCommand(5),
+      new WaitCommand(1),
       new TurnToAngle(270, drive),
-      new WaitCommand(5),
+      new WaitCommand(1),
       new TurnToAngle(360, drive)
     );
 
@@ -155,17 +183,16 @@ public class Robot extends TimedRobot {
     );
 
     Command followRectangleOdom = new SequentialCommandGroup(
-      new TurnToAngle(0, drive),
-      new MoveDistance(Units.inchesToMeters(80), drive),
+      new MoveDistance(Units.inchesToMeters(20), drive),
       
       new TurnToAngle(90, drive),
-      new MoveDistance(Units.inchesToMeters(60), drive),
+      new MoveDistance(Units.inchesToMeters(10), drive),
 
       new TurnToAngle(180, drive),
-      new MoveDistance(Units.inchesToMeters(80), drive),
+      new MoveDistance(Units.inchesToMeters(20), drive),
 
       new TurnToAngle(270, drive),
-      new MoveDistance(Units.inchesToMeters(60), drive),
+      new MoveDistance(Units.inchesToMeters(10), drive),
 
       new TurnToAngle(0, drive)
     );
@@ -184,7 +211,7 @@ public class Robot extends TimedRobot {
     // sequence.schedule();
 
     // rotateAngles.schedule();
-    followRectangle.schedule();
+    rotateAngles.schedule();
     // followRectangleOdom.schedule();
 
 
@@ -207,11 +234,10 @@ public class Robot extends TimedRobot {
     Pose2d poseOdomAndVision = drive.getPoseWithVisionMeasurements();
 
     // Every 40ms
-    if (tick % 2 == 0) {
-      System.out.println("ODOMETRY ONLY: Angle: " + poseOdom.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdom.getX()) + ". Y: " + Units.metersToInches(poseOdom.getY()));
-      System.out.println("ODOMETRY + VISION: Angle: " + poseOdomAndVision.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdomAndVision.getX()) + ". Y: " + Units.metersToInches(poseOdomAndVision.getY()));
-    }
-
+    // if (tick % 2 == 0) {
+    //   System.out.println("ODOMETRY ONLY: Angle: " + poseOdom.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdom.getX()) + ". Y: " + Units.metersToInches(poseOdom.getY()));
+    //   System.out.println("ODOMETRY + VISION: Angle: " + poseOdomAndVision.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdomAndVision.getX()) + ". Y: " + Units.metersToInches(poseOdomAndVision.getY()));
+    // }
   }
 
   @Override
@@ -227,11 +253,17 @@ public class Robot extends TimedRobot {
     var rot = Math.pow(joystick.getX(), 3);
 
     // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-    drive.differentialDrive(speed, -rot); // Flip CW/CCW
+    
+    // No flip for actual robot
+    drive.differentialDrive(speed, rot); // Flip CW/CCW
 
-    if (joystick.getTriggerPressed()) {
+    if (controller.getAButton()) {
       System.out.println("Trigger pressed, turning to 180 deg");
       new TurnToAngle(180, drive).schedule();
+    }
+
+    if (controller.getBButton()) {
+      new Balance(drive).schedule();
     }
 
     if (joystick.getTrigger()) {
@@ -249,77 +281,108 @@ public class Robot extends TimedRobot {
 
 
   Pose2d poseAhead;
-  GenericEntry targetAngleInput;
 
   @Override
   public void testInit() {
-    Pose2d initialPose = drive.getPoseFromOdometry();
-    double yaw = initialPose.getRotation().getRadians();
-    poseAhead = new Pose2d(
-      initialPose.getX() + Math.cos(yaw) * Units.inchesToMeters(10),
-      initialPose.getY() + Math.sin(yaw) * Units.inchesToMeters(10),
-      initialPose.getRotation()
-    );
-
-    // drive.resetPosition();
-
+    leftSolenoid.set(Value.kOff); // Off by default
+    rightSolenoid.set(Value.kOff);
   }
 
-  String poseToString(Pose2d pose) {
-    return "X: " + pose.getX() + ", Y: " + pose.getY() 
-      + ", yaw: " + pose.getRotation().getDegrees();
-  }
+  boolean pistonForward = false;
+  boolean compressorEnabled = false;
+
+  boolean controlMode = true;
+  double pressure = 0;
+  boolean pistonForward2 = false;
 
   @Override
   public void testPeriodic() {
-    drive.updateOdometry();
+    
+    // double joystickThrottle = joystick.getThrottle();
+    // boolean joystickTrigger = joystick.getTrigger();
+    // double pov = joystick.getPOV();
 
-    Pose2d pose = drive.getPoseFromOdometry();
-    Pose2d aprilTagPose = PhotonCameraWrapper.tag04.pose.toPose2d();
+    // System.out.println("throttle: " + joystickThrottle + "; trigger: " + joystickTrigger + "; pov: " + pov);
 
-    Rotation2d currentRotation = pose.getRotation();
+    // DRIVE
 
-    double currentAngle = currentRotation.getRadians();
-    double targetAngle = (Math.atan2(aprilTagPose.getY() - pose.getY(), aprilTagPose.getX() - pose.getX()));
+    // Controller forward is negative
+    double speed = Math.pow(-controller.getLeftY(), 3.0);
+    double turn = Math.pow(controller.getLeftX(), 3.0);
 
-    // targetAngle = Math.toRadians(targetAngleInput.getDouble(0));
+    // System.out.println("Joystick y: " + joystick.getY() + " ; joystick x: " + joystick.getX());
+    // double joystickY = Math.signum(joystick.getY()) * Math.max(0, Math.abs(joystick.getY()) - 0.1);
+    // double joystickX = Math.signum(joystick.getX()) * Math.max(0, Math.abs(joystick.getX()) - 0.1);
+    // speed = driveSpeedLimiter.calculate(-joystickY);
+    // turn = turnSpeedLimiter.calculate(joystickX);
+    // System.out.println("Speed: " + speed + "; turn: " + turn);
 
-    // Radians increase CCW, but positive rotation is CW
-    turnPid.enableContinuousInput(-Math.PI, Math.PI);
-    double turn = turnPid.calculate(currentAngle, targetAngle);
+    drive.differentialDrive(speed, -turn);
 
-    System.out.println("Current angle: " + Math.toDegrees(currentAngle) + " deg; target angle: " + Math.toDegrees(targetAngle) + " deg; turn: " + turn);
+    // EXTENDER
 
-    turn = Math.signum(turn) * Math.min(Math.abs(turn), 0.1); // Stop gap for death spirals
+    // TODO: Change to PID
+    extenderPosition += (controller.getLeftTriggerAxis()
+        - controller.getRightTriggerAxis()) * 0.1;
+    extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+    System.out.println("Extender position: " + extenderPosition);
 
-    drive.differentialDrive(0, turn);
+    // ARM
+    if (controller.getLeftBumper()) {
+      // Turn counterclockwise
+      armAngle += 0.3;
+    }
 
-    // turnPid.setTolerance(0.1);
+    if (controller.getRightBumper()) {
+      // Turn clockwise
+      armAngle -= 0.3;
+    }
 
+    if (controller.getXButtonPressed()) {
+      // Align arm with level two game node height
+      double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
+          + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
+      double angle = Math
+          .atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT - Constants.ArmConstants.ARM_HEIGHT) / armLength);
+      System.out.println("armLength: " + armLength);
+      System.out.println("arm angle: " + angle);
+      armAngle = Constants.ArmConstants.ARM_GEARING * angle;
+    }
 
-    // if (!turnPid.atSetpoint()) {
-    // } else {
-    //   double distance = Math.hypot(aprilTagPose.getX() - pose.getX(), aprilTagPose.getY() - pose.getY());
+    armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
 
-    //   // Negate because behind apriltag
-    //   double speed = distancePid.calculate(distance, 1); // 1 meter from AprilTag
+    // COMPRESSOR
+    if (compressorEnabled) {
+      // Calculate pressure from analog input
+      // (from REV analog sensor datasheet)
+      double vOut = pressureSensor.getAverageVoltage();
+      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
 
-    //   System.out.println("Distance: " + Units.metersToInches(distance) + "; target: " +
-    //     Units.metersToInches(1) + "; speed: " + speed);
+      pressureController.calculate(pressure, 60);
+      if (pressureController.atSetpoint()) {
+        compressor.enableDigital();
+      } else {
+        compressor.disable();
+      }
+    } else {
+      compressor.disable();
+    }
 
-    //   drive.differentialDrive(speed, 0);
-    // }
+    if (controller.getAButtonPressed()) {
+      compressorEnabled = !compressorEnabled;
+    }
 
-    // double position = drive.getPosition();
-
-
-
-    // if (tick % 20 == 0) {
-    //   System.out.println("Relative pose: " + relativePose);
-    //   System.out.println("Distance: " + distance);
-      
-    //   broadcastMessage("Current pose: " + pose + "; Relative pose: " + relativePose);
-    //   broadcastMessage("Distance: " + distance + "; adjustment: " + speed);
-    // }
+    // PISTON
+    if (controller.getYButtonPressed()) {
+      pistonForward = !pistonForward;
+      System.out.println("Enabling solenoid: " + pistonForward);
+      if (pistonForward) {
+        leftSolenoid.set(Value.kReverse);
+        rightSolenoid.set(Value.kForward);
+      } else {
+        leftSolenoid.set(Value.kForward);
+        rightSolenoid.set(Value.kReverse);
+      }
+    }
   }
 }
