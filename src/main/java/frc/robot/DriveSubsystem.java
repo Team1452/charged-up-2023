@@ -87,10 +87,18 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Invert right motor (positive should be forward, negative backward)
     // left.setInverted(true);
-    right.setInverted(true);
-
     leftEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
+
+    if (DriveConstants.LEFT_MOTOR_INVERTED) {
+      left.setInverted(true);
+      leftEncoder.setPositionConversionFactor(-left.getPositionConversionFactor())
+    }
+
+    if (DriveConstants.RIGHT_MOTOR_INVERTED) {
+      right.setInverted(true);
+      rightEncoder.setPositionConversionFactor(-rightEncoder.getPositionConversionFactor())
+    }
 
     gyro.reset();
   }
@@ -118,9 +126,9 @@ public class DriveSubsystem extends SubsystemBase {
   public void updateOdometry() {
     // Left encoder is inverted
     poseEstimator.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
     poseEstimatorWithVision.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example
     // -- on
@@ -153,11 +161,11 @@ public class DriveSubsystem extends SubsystemBase {
 
   public double getPosition() {
     // Left is inverted
-    return (leftEncoder.getPosition() - rightEncoder.getPosition())/2;
+    return (leftEncoder.getPosition() + rightEncoder.getPosition())/2;
   }
 
   public void resetPosition(Pose2d pose) {
-    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition(), pose);
+    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition(), pose);
   }
 
   public void resetPositionOdometry() {

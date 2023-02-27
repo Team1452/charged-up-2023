@@ -1,0 +1,19 @@
+TODO:
+  - Pt. H goals
+    - Automatic scoring of preload in either low or high goals
+    - Put camera stream on ShuffleBoard
+    - Get contour filtering done
+    - PID on centering contour in camera
+    - Once centered, can move to set position and drop
+    - get UI working with buttons to activate automated routines
+    - talk to Rex about controls
+    - automatic pneumatic adjustment
+    -
+
+Auton:
+  - Score preload -- center the robot with respect to the poles
+    - Can it place cones
+  - Make sure it can forward and back
+
+Competition:
+  - ask teams about networking and custom UI
