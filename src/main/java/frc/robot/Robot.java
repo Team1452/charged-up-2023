@@ -57,9 +57,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
+
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
+import frc.robot.commands.CenterPhotonVisionTarget;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
@@ -88,7 +90,7 @@ public class Robot extends TimedRobot {
   private SparkMaxPIDController armPID;
   private SparkMaxPIDController extenderPID;
 
-  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
 
   private final RelativeEncoder armEncoder = arm.getEncoder();
   private final RelativeEncoder extenderEncoder = arm.getEncoder();
@@ -211,7 +213,18 @@ public class Robot extends TimedRobot {
     // sequence.schedule();
 
     // rotateAngles.schedule();
-    rotateAngles.schedule();
+    // rotateAngles.schedule();
+
+    // new SequentialCommandGroup(
+    //   new MoveDistance(1, drive),
+    //   new TurnToAngle(-90, drive),
+    //   new MoveDistance(1, drive),
+    //   new TurnToAngle(-180, drive),
+    //   new MoveDistance(1, drive)
+    // ).schedule();
+
+    new CenterPhotonVisionTarget(drive).schedule();
+
     // followRectangleOdom.schedule();
 
 
@@ -269,6 +282,9 @@ public class Robot extends TimedRobot {
     if (joystick.getTrigger()) {
       CommandScheduler.getInstance().run();
     }
+
+    var gyro = drive.getGyro();
+    System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
 
     // arm.set(controller.getLeftY());
 

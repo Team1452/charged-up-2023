@@ -85,9 +85,8 @@ public class DriveSubsystem extends SubsystemBase {
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
 
-    // Invert right motor (positive should be forward, negative backward)
-    // left.setInverted(true);
-    right.setInverted(true);
+    // Invert left motor (positive should be forward, negative backward)
+    left.setInverted(true);
 
     leftEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
@@ -118,9 +117,9 @@ public class DriveSubsystem extends SubsystemBase {
   public void updateOdometry() {
     // Left encoder is inverted
     poseEstimator.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition());
     poseEstimatorWithVision.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), -leftEncoder.getPosition(), rightEncoder.getPosition());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example
     // -- on
@@ -153,11 +152,11 @@ public class DriveSubsystem extends SubsystemBase {
 
   public double getPosition() {
     // Left is inverted
-    return (leftEncoder.getPosition() - rightEncoder.getPosition())/2;
+    return (-leftEncoder.getPosition() + rightEncoder.getPosition())/2;
   }
 
   public void resetPosition(Pose2d pose) {
-    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition(), pose);
+    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition(), pose);
   }
 
   public void resetPositionOdometry() {

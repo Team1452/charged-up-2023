@@ -11,10 +11,10 @@ public class TurnToAngle extends PIDCommand {
     public TurnToAngle(double targetAngleDegrees, DriveSubsystem drive) {
         super(
             new PIDController(DriveConstants.kTurnP, DriveConstants.kTurnI, DriveConstants.kTurnD),
-            () -> drive.getPoseFromOdometry().getRotation().getDegrees(),
+            () -> drive.getGyro().getYaw(),
             targetAngleDegrees,
             output -> {
-                System.out.println("Current angle: " + drive.getHeading() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
+                System.out.println("Current angle: " + drive.getGyro().getYaw() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
                 drive.differentialDrive(0, output);
             },
             drive);
@@ -44,6 +44,13 @@ public class TurnToAngle extends PIDCommand {
 
     @Override
     public boolean isFinished() {
-        return getController().atSetpoint();
+        System.out.println("Is finished? " + getController().atSetpoint() + "; " + getController().getPositionTolerance() + "; " + getController().getVelocityTolerance() + "; " + getController().getPositionError());
+        
+        // atSetpoint() would return false even when within tolerance.
+        // No idea why? TODO: Figure out why
+
+        // return getController().atSetpoint();
+        // return Math.abs(getController().getPositionError()) < getController().getPositionTolerance();
+        return false;
     }
 }
