@@ -33,11 +33,12 @@ public class Constants {
 
     static class ExtenderConstants {
         static final double EXTENDER_GEARING = 1/5;
-        static final double MAX_EXTENDER_ROTATION = 0.0714285671710968; //I hate myself and I hate this number
+        static final double MAX_EXTENDER_POSITION = 0.0714285671710968; //I hate myself and I hate this number
+        static final double MIN_EXTENDER_POSITION = 0; //I hate myself and I hate this number
         //this^ number is for the encoder rotations at max arm length 
         static final double MIN_ARM_LENGTH = Units.feetToMeters(20.5);
         static final double MAX_ARM_LENGTH = Units.feetToMeters(51);
-        static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_ROTATION;
+        static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_POSITION;
 
         static final double MIN_ARM_EXTENSION = 0;
         static final double MAX_ARM_EXTENSION = MAX_ARM_LENGTH - MIN_ARM_LENGTH;
@@ -49,10 +50,13 @@ public class Constants {
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
         static final double MIN_ROTATION = Units.degreesToRadians(360-55);
         static final double MAX_ROTATION = Units.degreesToRadians(180+42);
+        static final double ARM_BASE_LENGTH_INCHES = 20.5;
+        static final double ARM_EXTENSION_LENGTH_INCHES =  40;
     }
 
     static class PneumaticConstants { 
-        static final double MAX_PRESSURE = 60; // PSI
+        static final double MAX_PRESSURE = 120; // PSI
+        static final double TARGET_PRESSURE = 110; // PSI
         static final double ANALOG_VCC = 5; // VCC for analog input
     }
 
@@ -78,8 +82,6 @@ public class Constants {
     }
 
     static class VisionConstants {
-        static final double ARM_BASE_LENGTH_INCHES = 20.5;
-        static final double ARM_EXTENSION_LENGTH_INCHES =  0;//TODO
         static final Transform3d robotToCam =
                 new Transform3d(
                         new Translation3d(Units.inchesToMeters(16 /* camera is 16 inches ahead of center */), 0.0, 0.5),
