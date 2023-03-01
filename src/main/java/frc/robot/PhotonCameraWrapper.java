@@ -59,9 +59,14 @@ public class PhotonCameraWrapper {
         System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
 
         // Create pose estimator
-        photonPoseEstimator =
-                new PhotonPoseEstimator(
-                        atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
+        // photonPoseEstimator =
+        //         new PhotonPoseEstimator(
+        //                 atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
+
+    }
+
+    public PhotonTrackedTarget getTarget() {
+        return photonCamera.getLatestResult().getBestTarget();
     }
 
     /**
@@ -71,7 +76,8 @@ public class PhotonCameraWrapper {
      */
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose(Pose2d prevEstimatedRobotPose) {
         // photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
-        return photonPoseEstimator.update();
+        // return photonPoseEstimator.update();
+        return Optional.empty();
     }
     public List<PhotonTrackedTarget> getTargets() {
         var result = photonCamera.getLatestResult();

@@ -85,12 +85,16 @@ public class DriveSubsystem extends SubsystemBase {
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
 
-    // Invert right motor (positive should be forward, negative backward)
-    // left.setInverted(true);
-    right.setInverted(true);
-
     leftEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
+
+    if (RobotMap.MOTOR_LEFT_INVERTED) {
+      left.setInverted(true);
+    }
+
+    if (RobotMap.MOTOR_RIGHT_INVERTED) {
+      right.setInverted(true);
+    }
 
     gyro.reset();
   }
@@ -114,13 +118,27 @@ public class DriveSubsystem extends SubsystemBase {
     setWithLimit(right, speed - turn);
   }
 
+  double getLeftPosition() {
+    if (RobotMap.MOTOR_LEFT_INVERTED)
+      return -leftEncoder.getPosition();
+    else
+      return leftEncoder.getPosition();
+  }
+
+  double getRightPosition() {
+    if (RobotMap.MOTOR_LEFT_INVERTED)
+      return -rightEncoder.getPosition();
+    else
+      return rightEncoder.getPosition();
+  }
+
   /** Updates the field-relative position. */
   public void updateOdometry() {
     // Left encoder is inverted
     poseEstimator.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), getLeftPosition(), getRightPosition());
     poseEstimatorWithVision.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), getLeftPosition(), getRightPosition());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example
     // -- on
@@ -153,11 +171,11 @@ public class DriveSubsystem extends SubsystemBase {
 
   public double getPosition() {
     // Left is inverted
-    return (leftEncoder.getPosition() - rightEncoder.getPosition())/2;
+    return (getLeftPosition() + getRightPosition())/2;
   }
 
   public void resetPosition(Pose2d pose) {
-    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition(), pose);
+    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), getLeftPosition(), getRightPosition(), pose);
   }
 
   public void resetPositionOdometry() {

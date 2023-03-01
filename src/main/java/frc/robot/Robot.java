@@ -52,15 +52,16 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
-import frc.robot.Constants.ExtenderConstants;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
+import frc.robot.commands.CenterPhotonVisionTarget;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
@@ -89,7 +90,7 @@ public class Robot extends TimedRobot {
   private SparkMaxPIDController armPID;
   private SparkMaxPIDController extenderPID;
 
-  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
 
   private final RelativeEncoder armEncoder = arm.getEncoder();
   private final RelativeEncoder extenderEncoder = extender.getEncoder();
@@ -98,7 +99,7 @@ public class Robot extends TimedRobot {
 
   private int tick = 0;
 
-  double armAngle;
+  double armPosition;
   double extenderPosition;
 
   @Override
@@ -110,7 +111,7 @@ public class Robot extends TimedRobot {
     extenderEncoder.setPosition(0);
     armEncoder.setPosition(0);
     armPID = arm.getPIDController();
-    armAngle = armEncoder.getPosition();
+    armPosition = armEncoder.getPosition();
 
     extenderPID = extender.getPIDController();
     extenderPosition = extenderEncoder.getPosition();
@@ -211,7 +212,18 @@ public class Robot extends TimedRobot {
     // sequence.schedule();
 
     // rotateAngles.schedule();
-    rotateAngles.schedule();
+    // rotateAngles.schedule();
+
+    // new SequentialCommandGroup(
+    //   new MoveDistance(1, drive),
+    //   new TurnToAngle(-90, drive),
+    //   new MoveDistance(1, drive),
+    //   new TurnToAngle(-180, drive),
+    //   new MoveDistance(1, drive)
+    // ).schedule();
+
+    new CenterPhotonVisionTarget(drive).schedule();
+
     // followRectangleOdom.schedule();
 
 
@@ -248,59 +260,75 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    var speed = Math.pow(-joystick.getY(), 3);
-    var rot = Math.pow(joystick.getX(), 3);
-
-    // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-    
+    //var speed = Math.pow(-joystick.getY(), 3);
+    //var rot = Math.pow(joystick.getX(), 3);
     // No flip for actual robot
-    drive.differentialDrive(speed, rot); // Flip CW/CCW
+    //drive.differentialDrive(speed, rot); // Flip CW/CCW
+    //TODO: Temp disabled for later joystick implementation
 
     if (controller.getAButton()) {
       System.out.println("Trigger pressed, turning to 180 deg");
       new TurnToAngle(180, drive).schedule();
     }
 
-    if (controller.getBButtonPressed()) {
-      new Balance(drive).schedule();
-    }
+    //if (controller.getBButtonPressed()) {
+    //  new Balance(drive).schedule();
+    //}
 
  //EXTENDER
       final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
       if(extenderEncoder.getPosition() < Constants.ExtenderConstants.MAX_EXTENDER_POSITION &&
       extenderEncoder.getPosition()>Constants.ExtenderConstants.MIN_EXTENDER_POSITION){
       if(controller.getLeftTriggerAxis()>0.5)
-        extenderPosition=extenderPosition+0.01*extenderScaleConstant;
+        extenderPosition += 0.01*extenderScaleConstant;
       if(controller.getRightTriggerAxis()>0.5)
-        extenderPosition=extenderPosition-0.01*extenderScaleConstant;
+        extenderPosition -= 0.01*controller.getRightTriggerAxis()*extenderScaleConstant;
       if(controller.getLeftTriggerAxis()>0.95)
         extenderPosition = Constants.ExtenderConstants.MAX_EXTENDER_POSITION;
-      if(controller.getLeftTriggerAxis()<0.05)
+      if(controller.getRightTriggerAxis()<0.05)
         extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_POSITION;
     }
+
     extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
     //ARM
-    if (controller.getLeftBumper()) {
-      armAngle += 0.3;
-    }
-    if (controller.getRightBumper()) {
-      armAngle -= 0.3;
+    final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
+    final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
+    final double currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
+          + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
+    final double armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
+
+    SmartDashboard.putNumber("arm Height", armHeight);
+    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
+    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
+     Math.abs(armHeight - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
+     Math.abs(armHeight - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putNumber("Extender Length Meters" , currentExtenderLength);
+    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
+    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
+
+    armPosition += controller.getLeftY() * armScaleConstant * 0.001;
+
+    if (controller.getLeftBumperPressed()) {
+      armPosition += 0.3;
     }
 
-    armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
+    if (controller.getRightBumperPressed()) {
+      armPosition -= 0.3;
+    }
 
-    if (controller.getXButtonPressed()) {
+    armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
+
+    if (controller.getXButtonPressed())
       extenderEncoder.setPosition(0);
-    }
-    if (controller.getBButtonPressed()) {
-      armEncoder.setPosition(0);
-    }
 
-    System.out.println("Extender position: " + extenderPosition);
-    System.out.println("Extender Encoder: " + extenderEncoder.getPosition());
-    System.out.println("Arm Angle: " + getArmAngle(armEncoder));
-    System.out.println("Arm Encoder: " + armEncoder.getPosition());
+    if (controller.getBButtonPressed())
+      armEncoder.setPosition(0);
+
+    var gyro = drive.getGyro();
+    System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
+
 
     //arm.set(controller.getLeftY());
 
@@ -379,7 +407,7 @@ public class Robot extends TimedRobot {
       armAngle -= 0.3;
     }*/
 
-    armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
+    ///armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
 
     // COMPRESSOR
     if (compressorEnabled) {
@@ -414,17 +442,5 @@ public class Robot extends TimedRobot {
         rightSolenoid.set(Value.kReverse);
       }
     }
-  }
-  public static double getArmAngle(RelativeEncoder armEncoder){
-      // Align arm with level two game node height
-      double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
-          + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
-
-      double angle = Math
-          .atan((   - Constants.ArmConstants.ARM_HEIGHT) / armLength);
-      System.out.println("armLength: " + armLength);
-      System.out.println("arm angle: " + angle);
-      return Constants.ArmConstants.ARM_GEARING * angle;
-
   }
 }

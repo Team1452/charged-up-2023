@@ -11,7 +11,7 @@ public class Constants {
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
         public static final double kTrackWidth = 0.381 * 2; // meters
         public static final double kWheelRadius = Units.inchesToMeters(3);
-        public static final double kGearRatio = 1/10.71;
+        public static final double kGearRatio = 1/6;
         public static final double kDistancePerPulse = kGearRatio * 2 * Math.PI * kWheelRadius;
 
         public static final double kMoveP = 0.35;
@@ -31,27 +31,55 @@ public class Constants {
         public static final double kBalanceToleranceDegrees = 1;
     }
 
+    public static class TestbedDriveConstants {
+        public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
+        public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
+        public static final double kTrackWidth = 0.381 * 2; // meters
+        public static final double kWheelRadius = Units.inchesToMeters(3);
+        public static final double kGearRatio = 1/10.71;
+        public static final double kDistancePerPulse = kGearRatio * 2 * Math.PI * kWheelRadius;
+
+        public static final double kMoveP = 0.20;
+        public static final double kMoveI = 0.01;
+        public static final double kMoveD = 0.01;
+        public static final double kMoveToleranceMeters = Units.inchesToMeters(1);
+
+        // public static final double kTurnP = 0.04;
+        public static final double kTurnP = 0.01;
+        public static final double kTurnI = 0; // .001;
+        public static final double kTurnD = 0; // .001;
+        public static final double kTurnAngleToleranceDegrees = 1;
+
+        public static final double kBalanceP = 0.1;
+        public static final double kBalanceI = 0;
+        public static final double kBalanceD = 0;
+        public static final double kBalanceToleranceDegrees = 1;
+    }
+
     static class ExtenderConstants {
         static final double EXTENDER_GEARING = 1/5;
         static final double MAX_EXTENDER_POSITION = 0.0714285671710968; //I hate myself and I hate this number
         static final double MIN_EXTENDER_POSITION = 0; //I hate myself and I hate this number
         //this^ number is for the encoder rotations at max arm length 
-        static final double MIN_ARM_LENGTH = Units.feetToMeters(20.5);
-        static final double MAX_ARM_LENGTH = Units.feetToMeters(51);
+        static final double MIN_ARM_LENGTH = Units.inchesToMeters(20.5);
+        static final double MAX_ARM_LENGTH =  Units.inchesToMeters(40) + MIN_ARM_LENGTH;
         static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_POSITION;
 
         static final double MIN_ARM_EXTENSION = 0;
         static final double MAX_ARM_EXTENSION = MAX_ARM_LENGTH - MIN_ARM_LENGTH;
+
+        static final double EXTENDER_STRESS_CURRENT = 0;//TODO
         
     }
 
     static class ArmConstants {
         static final double ARM_GEARING = (65/12)*50;
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
-        static final double MIN_ROTATION = Units.degreesToRadians(360-55);
-        static final double MAX_ROTATION = Units.degreesToRadians(180+42);
-        static final double ARM_BASE_LENGTH_INCHES = 20.5;
-        static final double ARM_EXTENSION_LENGTH_INCHES =  40;
+        static final double MIN_ROTATION_RAD = Units.degreesToRadians(360-55);
+        static final double MAX_ROTATION_RAD = Units.degreesToRadians(180+42);
+        static final double MAX_ROTATION_ROT = 0;//TODO
+        static final double MIN_ROTATION_ROT = 0;//TODO
+        static final double ARM_STRESS_CURRENT = 0;//TODO
     }
 
     static class PneumaticConstants { 

@@ -28,7 +28,7 @@ public class MoveDistance extends PIDCommand {
         this.distanceMeters = distanceMeters;
 
         getController()
-            .setTolerance(0.001); // TODO: Move to constants
+            .setTolerance(DriveConstants.kMoveToleranceMeters); // TODO: Move to constants
     }
 
     @Override
@@ -44,6 +44,12 @@ public class MoveDistance extends PIDCommand {
 
     @Override
     public boolean isFinished() {
-        return getController().atSetpoint();
+        System.out.println("Is finished? " + getController().atSetpoint() + "; " + getController().getPositionTolerance() + "; " + getController().getVelocityTolerance() + "; " + getController().getPositionError());
+        
+        // atSetpoint() would return false even when within tolerance.
+        // No idea why? TODO: Figure out why
+
+        // return getController().atSetpoint();
+        return Math.abs(getController().getPositionError()) < getController().getPositionTolerance();
     }
 }
