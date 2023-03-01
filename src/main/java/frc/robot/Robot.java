@@ -111,8 +111,8 @@ public class Robot extends TimedRobot {
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
     extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
 
-    extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_POSITION);
-    armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
+    extenderEncoder.setPosition(0);
+    armEncoder.setPosition(0);
     armPID = arm.getPIDController();
     armPosition = armEncoder.getPosition();
 
@@ -126,22 +126,12 @@ public class Robot extends TimedRobot {
     armPID.setIZone(0);
     armPID.setFF(0);
 
-    // sets absolute encoder limits for arm
-
-    //arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ArmConstants.MIN_ROTATION);
-    //arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ArmConstants.MAX_ROTATION);
-
-    // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
-
     extenderPID.setP(0.1);
     extenderPID.setI(0.01);
     extenderPID.setD(0.00000);
     extenderPID.setOutputRange(-1, 1);
     extenderPID.setIZone(0);
     extenderPID.setFF(0);
-
-    //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ExtenderConstants.MAX_EXTENDER_POSITION);
-    //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, 0f);
   }
 
   @Override
@@ -159,32 +149,6 @@ public class Robot extends TimedRobot {
     // drive.resetPosition(new Pose2d(10, 0, Rotation2d.fromDegrees(-180)));
     drive.resetPositionOdometry();
 
-    Command rotateAngles = new SequentialCommandGroup(
-      new TurnToAngle(90, drive),
-      new WaitCommand(1),
-      new TurnToAngle(180, drive),
-      new WaitCommand(1),
-      new TurnToAngle(270, drive),
-      new WaitCommand(1),
-      new TurnToAngle(360, drive)
-    );
-
-    Command followRectangle = new SequentialCommandGroup(
-      new TurnToAngle(-180, drive),
-      new MoveDistance(Units.inchesToMeters(80), drive),
-      
-      new TurnToAngle(-90, drive),
-      new MoveDistance(Units.inchesToMeters(60), drive),
-
-      new TurnToAngle(0, drive),
-      new MoveDistance(Units.inchesToMeters(80), drive),
-
-      new TurnToAngle(90, drive),
-      new MoveDistance(Units.inchesToMeters(60), drive),
-
-      // Doesn't converge? TODO: Figure out why
-      new TurnToAngle(180, drive)
-    );
 
     Command followRectangleOdom = new SequentialCommandGroup(
       new MoveDistance(Units.inchesToMeters(20), drive),
@@ -200,44 +164,6 @@ public class Robot extends TimedRobot {
 
       new TurnToAngle(0, drive)
     );
-    
-    
-    Command _followRectangleOld = new MoveDistance(Units.inchesToMeters(80), drive)
-      .andThen(new TurnToAngle(-90, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
-      .andThen(new TurnToAngle(-180, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(80), drive))
-      .andThen(new TurnToAngle(-270, drive))
-      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
-      .andThen(new TurnToAngle(0, drive));
-
-    System.out.println("Scheduling command");
-    // sequence.schedule();
-
-    // rotateAngles.schedule();
-    // rotateAngles.schedule();
-
-    // new SequentialCommandGroup(
-    //   new MoveDistance(1, drive),
-    //   new TurnToAngle(-90, drive),
-    //   new MoveDistance(1, drive),
-    //   new TurnToAngle(-180, drive),
-    //   new MoveDistance(1, drive)
-    // ).schedule();
-
-    new CenterPhotonVisionTarget(drive).schedule();
-
-    // followRectangleOdom.schedule();
-
-
-
-    // Command moveForward = new MoveDistance(10, drive);
-    // Command moveBackward = new MoveDistance(-3, drive);
-    // Command balance = new Balance(drive);
-
-    // moveForward
-    //   .andThen(moveBackward)
-    //   .andThen(balance);
   }
 
   @Override
@@ -248,11 +174,6 @@ public class Robot extends TimedRobot {
     Pose2d poseOdom = drive.getPoseFromOdometry();
     Pose2d poseOdomAndVision = drive.getPoseWithVisionMeasurements();
 
-    // Every 40ms
-    // if (tick % 2 == 0) {
-    //   System.out.println("ODOMETRY ONLY: Angle: " + poseOdom.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdom.getX()) + ". Y: " + Units.metersToInches(poseOdom.getY()));
-    //   System.out.println("ODOMETRY + VISION: Angle: " + poseOdomAndVision.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdomAndVision.getX()) + ". Y: " + Units.metersToInches(poseOdomAndVision.getY()));
-    // }
   }
 
   @Override
@@ -269,28 +190,12 @@ public class Robot extends TimedRobot {
     //drive.differentialDrive(speed, rot); // Flip CW/CCW
     //TODO: Temp disabled for later joystick implementation
 
-    if (controller.getAButtonPressed()) {
-      System.out.println("Trigger pressed, turning to 180 deg");
-      new TurnToAngle(180, drive).schedule();
-    }
-
-    if (controller.getYButtonPressed()) {
-      new Balance(drive).schedule();
-    }
 
  //EXTENDER
-      final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
-      if(extenderEncoder.getPosition() < Constants.ExtenderConstants.MAX_EXTENDER_POSITION &&
-      extenderEncoder.getPosition()>Constants.ExtenderConstants.MIN_EXTENDER_POSITION){
       if(controller.getLeftTriggerAxis()>0.5)
-        extenderPosition += 0.01*extenderScaleConstant;
+        extenderPosition += 0.3;
       if(controller.getRightTriggerAxis()>0.5)
-        extenderPosition -= 0.01*controller.getRightTriggerAxis()*extenderScaleConstant;
-      if(controller.getLeftTriggerAxis()>0.95)
-        extenderPosition = Constants.ExtenderConstants.MAX_EXTENDER_POSITION;
-      if(controller.getRightTriggerAxis()>0.95)
-        extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_POSITION;
-    }
+        extenderPosition -= 0.3*controller.getRightTriggerAxis();
 
     extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
@@ -302,15 +207,13 @@ public class Robot extends TimedRobot {
     final double currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
           + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
     final double armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
-    if(armPosition<Constants.ArmConstants.MAX_ROTATION_ROT && armPosition > Constants.ArmConstants.MIN_ROTATION_ROT){
-      armPosition += controller.getLeftY() * armScaleConstant * 0.001;
-
-      if (controller.getLeftBumper()) {
-        armPosition += 0.3;
-      }
-      if (controller.getLeftBumper()) {
-        armPosition -= 0.3;
-      }
+    armPosition += controller.getLeftY() * 0.001;
+    //16 ping assume -> then at max armPos gets incremented by 0.001 every second, cool
+    if (controller.getLeftBumper()) {
+      armPosition += 0.3;
+    }
+    if (controller.getLeftBumper()) {
+      armPosition -= 0.3;
     }
     armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
@@ -331,18 +234,6 @@ public class Robot extends TimedRobot {
     if (controller.getBButtonPressed())
       armEncoder.setPosition(0);
 
-    var gyro = drive.getGyro();
-    System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
-
-
-    //arm.set(controller.getLeftY());
-
-    // if (controller.getAButtonPressed()) {
-    //   solenoid.set(Value.kForward);
-    // } else if (controller.getAButtonReleased()) {
-    //   solenoid.set(Value.kReverse);
-    // }
-
     //ARM
 
     // Run scheduled commands
@@ -352,10 +243,49 @@ public class Robot extends TimedRobot {
 
   Pose2d poseAhead;
 
+  double kP = 0.1; 
+  double kI = 1e-4;
+  double kD = 1; 
+  double kIz = 0; 
+  double kFF = 0; 
+  double kMaxOutput = 1; 
+  double kMinOutput = -1;
+
+  double SkP = 0.1; 
+  double SkI = 1e-4;
+  double SkD = 1; 
+  double SkIz = 0; 
+  double SkFF = 0; 
+  double SkMaxOutput = 1; 
+  double SkMinOutput = -1;
+  
   @Override
   public void testInit() {
-    leftSolenoid.set(Value.kOff); // Off by default
-    rightSolenoid.set(Value.kOff);
+    armPID.setP(kP);
+    armPID.setI(kI);
+    armPID.setD(kD);
+    armPID.setIZone(kIz);
+    armPID.setFF(kFF);
+    armPID.setOutputRange(kMinOutput, kMaxOutput);
+
+    // display PID coefficients on SmartDashboard
+    SmartDashboard.putNumber("Arm P Gain", kP);
+    SmartDashboard.putNumber("Arm I Gain", kI);
+    SmartDashboard.putNumber("Arm D Gain", kD);
+    SmartDashboard.putNumber("Arm I Zone", kIz);
+    SmartDashboard.putNumber("Arm Feed Forward", kFF);
+    SmartDashboard.putNumber("Arm Max Output", kMaxOutput);
+    SmartDashboard.putNumber("Arm Min Output", kMinOutput);
+    SmartDashboard.putNumber("Arm Set Rotations", 0);
+
+    SmartDashboard.putNumber("Extender P Gain", SkP);
+    SmartDashboard.putNumber("Extender I Gain", SkI);
+    SmartDashboard.putNumber("Extender D Gain", SkD);
+    SmartDashboard.putNumber("Extender I Zone", SkIz);
+    SmartDashboard.putNumber("Extender Feed Forward", SkFF);
+    SmartDashboard.putNumber("Extender Max Output", SkMaxOutput);
+    SmartDashboard.putNumber("Extender Min Output", SkMinOutput);
+    SmartDashboard.putNumber("Extender Set Rotations", 0);
   }
 
   boolean pistonForward = false;
@@ -367,85 +297,52 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
+    double p = SmartDashboard.getNumber("Arm P Gain", 0);
+    double i = SmartDashboard.getNumber("Arm I Gain", 0);
+    double d = SmartDashboard.getNumber("Arm D Gain", 0);
+    double iz = SmartDashboard.getNumber("Arm I Zone", 0);
+    double ff = SmartDashboard.getNumber("Arm Feed Forward", 0);
+    double max = SmartDashboard.getNumber("Arm Max Output", 0);
+    double min = SmartDashboard.getNumber("Arm Min Output", 0);
+    double rotations = SmartDashboard.getNumber("Arm Set Rotations", 0);
+
+    // if PID coefficients on SmartDashboard have changed, write new values to controller
+    if((p != kP)) { armPID.setP(p); kP = p; }
+    if((i != kI)) { armPID.setI(i); kI = i; }
+    if((d != kD)) { armPID.setD(d); kD = d; }
+    if((iz != kIz)) { armPID.setIZone(iz); kIz = iz; }
+    if((ff != kFF)) { armPID.setFF(ff); kFF = ff; }
+    if((max != kMaxOutput) || (min != kMinOutput)) { 
+      armPID.setOutputRange(min, max); 
+      kMinOutput = min; kMaxOutput = max; 
+    }
     
-    // double joystickThrottle = joystick.getThrottle();
-    // boolean joystickTrigger = joystick.getTrigger();
-    // double pov = joystick.getPOV();
+    armPID.setReference(rotations, CANSparkMax.ControlType.kPosition);
 
-    // System.out.println("throttle: " + joystickThrottle + "; trigger: " + joystickTrigger + "; pov: " + pov);
+    //extender   
+    SmartDashboard.putNumber("SetPoint", rotations);
+    SmartDashboard.putNumber("ProcessVariable", extenderEncoder.getPosition());
 
-    // DRIVE
+    double Sp = SmartDashboard.getNumber("Extender P Gain", 0);
+    double Si = SmartDashboard.getNumber("Extender I Gain", 0);
+    double Sd = SmartDashboard.getNumber("Extender D Gain", 0);
+    double Siz = SmartDashboard.getNumber("Extender I Zone", 0);
+    double Sff = SmartDashboard.getNumber("Extender Feed Forward", 0);
+    double Smax = SmartDashboard.getNumber("Extender Max Output", 0);
+    double Smin = SmartDashboard.getNumber("Extender Min Output", 0);
+    double Srotations = SmartDashboard.getNumber("Extender Set Rotations", 0);
 
-    // Controller forward is negative
-    double speed = Math.pow(-controller.getLeftY(), 3.0);
-    double turn = Math.pow(controller.getLeftX(), 3.0);
-
-    // System.out.println("Joystick y: " + joystick.getY() + " ; joystick x: " + joystick.getX());
-    // double joystickY = Math.signum(joystick.getY()) * Math.max(0, Math.abs(joystick.getY()) - 0.1);
-    // double joystickX = Math.signum(joystick.getX()) * Math.max(0, Math.abs(joystick.getX()) - 0.1);
-    // speed = driveSpeedLimiter.calculate(-joystickY);
-    // turn = turnSpeedLimiter.calculate(joystickX);
-    // System.out.println("Speed: " + speed + "; turn: " + turn);
-
-    drive.differentialDrive(speed, -turn);
-
-    // EXTENDER
-    //extenderPosition = controller.getLeftTriggerAxis();
-    if(controller.getLeftBumper()){
-      extenderPosition=extenderPosition+0.01;
-    }
-    if(controller.getRightBumper()){
-      extenderPosition=extenderPosition-0.01;
-    }
-    extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
-    System.out.println("Extender position: " + extenderPosition);
-
-    // ARM
-    /*
-    if (controller.getLeftBumper()) {
-      // Turn counterclockwise
-      armAngle += 0.3;
+    // if PID coefficients on SmartDashboard have changed, write new values to controller
+    if((Sp != SkP)) { extenderPID.setP(Sp); SkP = Sp; }
+    if((Si != SkI)) { extenderPID.setI(Si); SkI = Si; }
+    if((Sd != SkD)) { extenderPID.setD(Sd); SkD = Sd; }
+    if((Siz != SkIz)) { extenderPID.setIZone(Siz); SkIz = Siz; }
+    if((Sff != SkFF)) { extenderPID.setFF(Sff); SkFF = Sff; }
+    if((Smax != SkMaxOutput) || (Smin != SkMinOutput)) { 
+      extenderPID.setOutputRange(Smin, Smax); 
+      SkMinOutput = Smin; SkMaxOutput = Smax; 
     }
 
-    if (controller.getRightBumper()) {
-      // Turn clockwise
-      armAngle -= 0.3;
-    }*/
-
-    ///armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
-
-    // COMPRESSOR
-    if (compressorEnabled) {
-      // Calculate pressure from analog input
-      // (from REV analog sensor datasheet)
-      double vOut = pressureSensor.getAverageVoltage();
-      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
-
-      pressureController.calculate(pressure, Constants.PneumaticConstants.TARGET_PRESSURE);
-      if (pressureController.atSetpoint()) {
-        compressor.enableDigital();
-      } else {
-        compressor.disable();
-      }
-    } else {
-      compressor.disable();
-    }
-
-    if (controller.getAButtonPressed()) {
-      compressorEnabled = !compressorEnabled;
-    }
-
-    // PISTON
-    if (controller.getYButtonPressed()) {
-      pistonForward = !pistonForward;
-      System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward) {
-        leftSolenoid.set(Value.kReverse);
-        rightSolenoid.set(Value.kForward);
-      } else {
-        leftSolenoid.set(Value.kForward);
-        rightSolenoid.set(Value.kReverse);
-      }
-    }
+    extenderPID.setReference(Srotations, CANSparkMax.ControlType.kPosition);
   }
 }
