@@ -76,8 +76,6 @@ public class Robot extends TimedRobot {
   private final BangBangController pressureController = new BangBangController();
 
   // COUNTERCLOCKWISE is positive
-  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
-  private final CANSparkMax extender = new CANSparkMax(RobotMap.EXTENDER, MotorType.kBrushless);
 
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
   private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
@@ -87,20 +85,25 @@ public class Robot extends TimedRobot {
 
   private final AnalogInput pressureSensor = new AnalogInput(0);
 
-  private SparkMaxPIDController armPID;
-  private SparkMaxPIDController extenderPID;
 
   private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
 
-  private final RelativeEncoder armEncoder = arm.getEncoder();
-  private final RelativeEncoder extenderEncoder = extender.getEncoder();
 
   private final Joystick joystick = new Joystick(0);
 
   private int tick = 0;
 
+  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
+  private final CANSparkMax extender = new CANSparkMax(RobotMap.EXTENDER, MotorType.kBrushless);
+
   double armPosition;
   double extenderPosition;
+
+  private final RelativeEncoder armEncoder = arm.getEncoder();
+  private final RelativeEncoder extenderEncoder = extender.getEncoder();
+
+  private SparkMaxPIDController armPID;
+  private SparkMaxPIDController extenderPID;
 
   @Override
   public void robotInit() {
@@ -108,15 +111,15 @@ public class Robot extends TimedRobot {
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
     extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
 
-    extenderEncoder.setPosition(0);
-    armEncoder.setPosition(0);
+    extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_POSITION);
+    armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
     armPID = arm.getPIDController();
     armPosition = armEncoder.getPosition();
 
     extenderPID = extender.getPIDController();
-    extenderPosition = extenderEncoder.getPosition();
+    extenderPosition =  extenderEncoder.getPosition();
 
-    armPID.setP(0.1);
+    armPID.setP(0.01);
     armPID.setI(0.001);
     armPID.setD(0.001);
     armPID.setOutputRange(-1, 1);
@@ -266,14 +269,14 @@ public class Robot extends TimedRobot {
     //drive.differentialDrive(speed, rot); // Flip CW/CCW
     //TODO: Temp disabled for later joystick implementation
 
-    if (controller.getAButton()) {
+    if (controller.getAButtonPressed()) {
       System.out.println("Trigger pressed, turning to 180 deg");
       new TurnToAngle(180, drive).schedule();
     }
 
-    //if (controller.getBButtonPressed()) {
-    //  new Balance(drive).schedule();
-    //}
+    if (controller.getYButtonPressed()) {
+      new Balance(drive).schedule();
+    }
 
  //EXTENDER
       final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
@@ -285,18 +288,31 @@ public class Robot extends TimedRobot {
         extenderPosition -= 0.01*controller.getRightTriggerAxis()*extenderScaleConstant;
       if(controller.getLeftTriggerAxis()>0.95)
         extenderPosition = Constants.ExtenderConstants.MAX_EXTENDER_POSITION;
-      if(controller.getRightTriggerAxis()<0.05)
+      if(controller.getRightTriggerAxis()>0.95)
         extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_POSITION;
     }
 
     extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
     //ARM
+
     final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
     final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
+    //This currently uses the current extender length and then controls for position but below I have code to get to angle and then control for length
     final double currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
           + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
     final double armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
+    if(armPosition<Constants.ArmConstants.MAX_ROTATION_ROT && armPosition > Constants.ArmConstants.MIN_ROTATION_ROT){
+      armPosition += controller.getLeftY() * armScaleConstant * 0.001;
+
+      if (controller.getLeftBumper()) {
+        armPosition += 0.3;
+      }
+      if (controller.getLeftBumper()) {
+        armPosition -= 0.3;
+      }
+    }
+    armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
     SmartDashboard.putNumber("arm Height", armHeight);
     SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
@@ -308,17 +324,6 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
     SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
 
-    armPosition += controller.getLeftY() * armScaleConstant * 0.001;
-
-    if (controller.getLeftBumperPressed()) {
-      armPosition += 0.3;
-    }
-
-    if (controller.getRightBumperPressed()) {
-      armPosition -= 0.3;
-    }
-
-    armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
     if (controller.getXButtonPressed())
       extenderEncoder.setPosition(0);
