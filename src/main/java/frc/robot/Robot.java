@@ -269,19 +269,16 @@ public class Robot extends TimedRobot {
 
  //EXTENDER
       final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
-      if(extenderEncoder.getPosition() < Constants.ExtenderConstants.MAX_EXTENDER_POSITION &&
-      extenderEncoder.getPosition()>Constants.ExtenderConstants.MIN_EXTENDER_POSITION){
-      if(controller.getLeftTriggerAxis()>0.5)
-        extenderPosition += 0.01*extenderScaleConstant;
-      if(controller.getRightTriggerAxis()>0.5)
-        extenderPosition -= 0.01*controller.getRightTriggerAxis()*extenderScaleConstant;
-      if(controller.getLeftTriggerAxis()>0.95)
-        extenderPosition = Constants.ExtenderConstants.MAX_EXTENDER_POSITION;
-      if(controller.getRightTriggerAxis()>0.95)
-        extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_POSITION;
-    }
+
+      if(controller.getLeftBumper())
+        extenderPosition += extenderScaleConstant;
+      if(controller.getRightBumper())
+        extenderPosition -= extenderScaleConstant;
+
+    extenderPosition = Math.max(0, Math.min(extenderPosition, 15));
 
     extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+
 
     //ARM
 
