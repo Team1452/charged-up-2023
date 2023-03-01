@@ -90,21 +90,41 @@ public class Robot extends TimedRobot {
   private SparkMaxPIDController armPID;
   private SparkMaxPIDController extenderPID;
 
-  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+  private DriveSubsystem drive;
 
   private final RelativeEncoder armEncoder = arm.getEncoder();
   private final RelativeEncoder extenderEncoder = arm.getEncoder();
 
   private final Joystick joystick = new Joystick(0);
 
+  private Command balancingCommand = null;
+  private Command centeringCommand = null;
+  private Command turningCommand = null;
+
   private int tick = 0;
 
   double armAngle;
   double extenderPosition;
 
+  public Robot() {
+    super(Constants.PERIOD_MS/1000);
+  }
+
   @Override
   public void robotInit() {
     compressor.disable();
+    
+    if (RobotMap.USING_TESTBED) {
+      // Testbed
+      drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_LEFT_INVERTED, RobotMap.TEST_MOTOR_RIGHT, RobotMap.TEST_MOTOR_RIGHT_INVERTED);
+    } else {
+      // Competition robot
+      drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_LEFT_INVERTED, RobotMap.MOTOR_RIGHT, RobotMap.MOTOR_RIGHT_INVERTED);
+    }
+
+    balancingCommand = new Balance(drive);
+    centeringCommand = new CenterPhotonVisionTarget(drive);
+
     // arm.restoreFactoryDefaults();
     // arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
     // // extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
@@ -270,13 +290,40 @@ public class Robot extends TimedRobot {
     // No flip for actual robot
     drive.differentialDrive(speed, rot); // Flip CW/CCW
 
-    if (controller.getAButton()) {
-      System.out.println("Trigger pressed, turning to 180 deg");
-      new TurnToAngle(180, drive).schedule();
+    if (controller.getRightBumperPressed()) {
+      centeringCommand.schedule();
     }
 
-    if (controller.getBButton()) {
-      new Balance(drive).schedule();
+    if (controller.getYButtonPressed()) {
+      if (turningCommand != null) turningCommand.cancel();
+      turningCommand = new TurnToAngle(0, drive);
+      turningCommand.schedule();
+    }
+
+    if (controller.getBButtonPressed()) {
+      if (turningCommand != null) turningCommand.cancel();
+      turningCommand = new TurnToAngle(90, drive);
+      turningCommand.schedule();
+    }
+
+    if (controller.getXButtonPressed()) {
+      if (turningCommand != null) turningCommand.cancel();
+      turningCommand = new TurnToAngle(-90, drive);
+      turningCommand.schedule();
+    }
+
+    if (controller.getLeftBumperPressed()) {
+      CommandScheduler.getInstance().cancelAll();
+    }
+
+    if (controller.getAButtonPressed()) {
+      if (balancingCommand.isScheduled()) {
+        System.out.println("Killing balance");
+        balancingCommand.cancel();
+      } else {
+        System.out.println("Balancing");
+        balancingCommand.schedule();
+      }
     }
 
     if (joystick.getTrigger()) {
@@ -284,7 +331,7 @@ public class Robot extends TimedRobot {
     }
 
     var gyro = drive.getGyro();
-    System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
+    // System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
 
     // arm.set(controller.getLeftY());
 
@@ -293,6 +340,7 @@ public class Robot extends TimedRobot {
     // } else if (controller.getAButtonReleased()) {
     //   solenoid.set(Value.kReverse);
     // }
+    CommandScheduler.getInstance().run();
   }
 
 

@@ -1,8 +1,14 @@
 package frc.robot;
 
 public class RobotMap {
-    public static int[] TEST_MOTOR_LEFT = {16};
-    public static int[] TEST_MOTOR_RIGHT = {22};
+    // Global flag for whether to use testbed values
+    public static boolean USING_TESTBED = true;
+    
+
+    public static int[] TEST_MOTOR_LEFT = {22};
+    public static int[] TEST_MOTOR_RIGHT = {16};
+    public static boolean TEST_MOTOR_LEFT_INVERTED = false;
+    public static boolean TEST_MOTOR_RIGHT_INVERTED = true;
 
     public static int[] MOTOR_LEFT = {13, 17};
     public static int[] MOTOR_RIGHT = {3, 14};

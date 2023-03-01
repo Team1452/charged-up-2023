@@ -34,6 +34,9 @@ public class DriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
+  private final boolean leftInverted;
+  private final boolean rightInverted;
+
   private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
   private final DifferentialDriveKinematics kinematics =
@@ -71,7 +74,7 @@ public class DriveSubsystem extends SubsystemBase {
     return motors;
   }
 
-  public DriveSubsystem(int[] leftIds, int[] rightIds) {
+  public DriveSubsystem(int[] leftIds, boolean leftInverted, int[] rightIds, boolean rightInverted) {
     pcw = new PhotonCameraWrapper();
     leftMotors = motorsFromIds(leftIds);
     rightMotors = motorsFromIds(rightIds);
@@ -88,13 +91,11 @@ public class DriveSubsystem extends SubsystemBase {
     leftEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
 
-    if (RobotMap.MOTOR_LEFT_INVERTED) {
-      left.setInverted(true);
-    }
+    this.leftInverted = leftInverted;
+    this.rightInverted = rightInverted;
 
-    if (RobotMap.MOTOR_RIGHT_INVERTED) {
-      right.setInverted(true);
-    }
+    left.setInverted(leftInverted);
+    right.setInverted(rightInverted);
 
     gyro.reset();
   }
@@ -119,17 +120,15 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   double getLeftPosition() {
-    if (RobotMap.MOTOR_LEFT_INVERTED)
-      return -leftEncoder.getPosition();
-    else
-      return leftEncoder.getPosition();
+    double position = leftEncoder.getPosition();
+    if (leftInverted) return -position;
+    else return position;
   }
 
   double getRightPosition() {
-    if (RobotMap.MOTOR_LEFT_INVERTED)
-      return -rightEncoder.getPosition();
-    else
-      return rightEncoder.getPosition();
+    double position = rightEncoder.getPosition();
+    if (rightInverted) return -position;
+    else return position;
   }
 
   /** Updates the field-relative position. */
@@ -170,7 +169,6 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public double getPosition() {
-    // Left is inverted
     return (getLeftPosition() + getRightPosition())/2;
   }
 

@@ -4,6 +4,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import frc.robot.DriveSubsystem;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.util.Utils;
 
 // TODO: Migrate this to PIDCommand()
 public class TurnToAngle extends PIDCommand {
@@ -11,7 +12,7 @@ public class TurnToAngle extends PIDCommand {
     public TurnToAngle(double targetAngleDegrees, DriveSubsystem drive) {
         super(
             new PIDController(DriveConstants.kTurnP, DriveConstants.kTurnI, DriveConstants.kTurnD),
-            () -> drive.getGyro().getYaw(),
+            () -> -drive.getGyro().getYaw(),
             targetAngleDegrees,
             output -> {
                 System.out.println("Current angle: " + drive.getGyro().getYaw() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
@@ -24,7 +25,7 @@ public class TurnToAngle extends PIDCommand {
         getController().enableContinuousInput(-180, 180);
 
         getController()
-            .setTolerance(DriveConstants.kTurnAngleToleranceDegrees);
+            .setTolerance(DriveConstants.kTurnAngleToleranceDegrees, 0.01);
     }
 
     @Override
@@ -51,6 +52,6 @@ public class TurnToAngle extends PIDCommand {
 
         // return getController().atSetpoint();
         // return Math.abs(getController().getPositionError()) < getController().getPositionTolerance();
-        return false;
+        return Utils.atSetpoint(m_controller);
     }
 }

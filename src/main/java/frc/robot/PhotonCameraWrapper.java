@@ -17,6 +17,7 @@ import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
 import org.photonvision.PhotonPoseEstimator.PoseStrategy;
+import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
 public class PhotonCameraWrapper {
@@ -66,7 +67,9 @@ public class PhotonCameraWrapper {
     }
 
     public PhotonTrackedTarget getTarget() {
-        return photonCamera.getLatestResult().getBestTarget();
+        PhotonPipelineResult result = photonCamera.getLatestResult();
+        if (result.hasTargets()) return result.getBestTarget();
+        else return null;
     }
 
     /**

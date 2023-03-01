@@ -6,6 +6,8 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 
 public class Constants {
+    public static final double PERIOD_MS = 20;    
+
     public static class DriveConstants {
         public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
@@ -20,15 +22,15 @@ public class Constants {
         public static final double kMoveToleranceMeters = Units.inchesToMeters(1);
 
         // public static final double kTurnP = 0.04;
-        public static final double kTurnP = 0.1;
-        public static final double kTurnI = 0.001;
-        public static final double kTurnD = 0.001;
-        public static final double kTurnAngleToleranceDegrees = 3;
+        public static final double kTurnP = 0.002;
+        public static final double kTurnI = 0.0004;
+        public static final double kTurnD = 0;
+        public static final double kTurnAngleToleranceDegrees = 0.1;
 
-        public static final double kBalanceP = 0.1;
+        public static final double kBalanceP = 0.008;
         public static final double kBalanceI = 0;
-        public static final double kBalanceD = 0;
-        public static final double kBalanceToleranceDegrees = 1;
+        public static final double kBalanceD = 0.001;
+        public static final double kBalanceToleranceDegrees = 2;
     }
 
     public static class TestbedDriveConstants {
