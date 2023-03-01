@@ -77,8 +77,8 @@ public class Constants {
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
         static final double MIN_ROTATION_RAD = Units.degreesToRadians(360-55);
         static final double MAX_ROTATION_RAD = Units.degreesToRadians(180+42);
-        static final double MAX_ROTATION_ROT = 0;//TODO
-        static final double MIN_ROTATION_ROT = 0;//TODO
+        static final double MAX_ROTATION_ROT = 60;
+        static final double MIN_ROTATION_ROT = 0;
         static final double ARM_STRESS_CURRENT = 0;//TODO
     }
 

@@ -144,9 +144,6 @@ public class Robot extends TimedRobot {
 
     //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ExtenderConstants.MAX_EXTENDER_POSITION);
     //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, 0f);
-    .setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("My Auto", kCustomAuto);
-    SmartDashboard.putData("Auto choices", m_chooser);
   }
 
   @Override
@@ -252,12 +249,6 @@ public class Robot extends TimedRobot {
 
     Pose2d poseOdom = drive.getPoseFromOdometry();
     Pose2d poseOdomAndVision = drive.getPoseWithVisionMeasurements();
-
-    // Every 40ms
-    // if (tick % 2 == 0) {
-    //   System.out.println("ODOMETRY ONLY: Angle: " + poseOdom.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdom.getX()) + ". Y: " + Units.metersToInches(poseOdom.getY()));
-    //   System.out.println("ODOMETRY + VISION: Angle: " + poseOdomAndVision.getRotation().getDegrees() + " deg. X: " + Units.metersToInches(poseOdomAndVision.getX()) + ". Y: " + Units.metersToInches(poseOdomAndVision.getY()));
-    // }
   }
 
   @Override
@@ -311,6 +302,7 @@ public class Robot extends TimedRobot {
         armPosition -= 0.3;
       }
     }
+
     armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
     SmartDashboard.putNumber("arm Height", armHeight);
@@ -322,6 +314,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Extender Length Meters" , currentExtenderLength);
     SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
     SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
+    System.out.print("Arm Encoder: " + armEncoder.getPosition());
+    SmartDashboard.putNumber("arm Height", armHeight);
     if(controller.getYButtonPressed()){ //control to position of an element
       
     }
