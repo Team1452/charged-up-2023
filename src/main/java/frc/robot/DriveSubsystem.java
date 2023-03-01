@@ -126,7 +126,7 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   double getRightPosition() {
-    if (RobotMap.MOTOR_LEFT_INVERTED)
+    if (RobotMap.MOTOR_RIGHT_INVERTED)
       return -rightEncoder.getPosition();
     else
       return rightEncoder.getPosition();

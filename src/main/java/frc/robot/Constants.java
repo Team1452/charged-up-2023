@@ -58,7 +58,7 @@ public class Constants {
 
     static class ExtenderConstants {
         static final double EXTENDER_GEARING = 1/5;
-        static final double MAX_EXTENDER_POSITION = 0.0714285671710968; //I hate myself and I hate this number
+        static final double MAX_EXTENDER_POSITION = 15; //I hate myself and I hate this number
         static final double MIN_EXTENDER_POSITION = 0; //I hate myself and I hate this number
         //this^ number is for the encoder rotations at max arm length 
         static final double MIN_ARM_LENGTH = Units.inchesToMeters(20.5);
@@ -68,7 +68,6 @@ public class Constants {
         static final double MIN_ARM_EXTENSION = 0;
         static final double MAX_ARM_EXTENSION = MAX_ARM_LENGTH - MIN_ARM_LENGTH;
 
-        static final double EXTENDER_STRESS_CURRENT = 0;//TODO
         
     }
 
@@ -77,9 +76,8 @@ public class Constants {
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
         static final double MIN_ROTATION_RAD = Units.degreesToRadians(360-55);
         static final double MAX_ROTATION_RAD = Units.degreesToRadians(180+42);
-        static final double MAX_ROTATION_ROT = 0;//TODO
-        static final double MIN_ROTATION_ROT = 0;//TODO
-        static final double ARM_STRESS_CURRENT = 0;//TODO
+        static final double MAX_ROTATION_ROT = 60;
+        static final double MIN_ROTATION_ROT = 0;
     }
 
     static class PneumaticConstants { 
