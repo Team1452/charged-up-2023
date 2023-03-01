@@ -53,6 +53,7 @@ import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -105,6 +106,7 @@ public class Robot extends TimedRobot {
   private SparkMaxPIDController armPID;
   private SparkMaxPIDController extenderPID;
 
+  private final SendableChooser<String> armChooser = new SendableChooser<>();
   @Override
   public void robotInit() {
     compressor.disable();
@@ -142,6 +144,9 @@ public class Robot extends TimedRobot {
 
     //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ExtenderConstants.MAX_EXTENDER_POSITION);
     //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, 0f);
+    .setDefaultOption("Default Auto", kDefaultAuto);
+    m_chooser.addOption("My Auto", kCustomAuto);
+    SmartDashboard.putData("Auto choices", m_chooser);
   }
 
   @Override
@@ -260,7 +265,8 @@ public class Robot extends TimedRobot {
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
   }
-
+  String[] armTargetChoices = {"Level Two Pole", "Level Three Pole", "Level Three Platform", "Level Two Platform", "Manual Control"};
+  String chosenArmTarget = "Manual Control";
   @Override
   public void teleopPeriodic() {
     //var speed = Math.pow(-joystick.getY(), 3);
@@ -269,14 +275,6 @@ public class Robot extends TimedRobot {
     //drive.differentialDrive(speed, rot); // Flip CW/CCW
     //TODO: Temp disabled for later joystick implementation
 
-    if (controller.getAButtonPressed()) {
-      System.out.println("Trigger pressed, turning to 180 deg");
-      new TurnToAngle(180, drive).schedule();
-    }
-
-    if (controller.getYButtonPressed()) {
-      new Balance(drive).schedule();
-    }
 
  //EXTENDER
       final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
@@ -302,6 +300,7 @@ public class Robot extends TimedRobot {
     final double currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
           + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
     final double armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
+
     if(armPosition<Constants.ArmConstants.MAX_ROTATION_ROT && armPosition > Constants.ArmConstants.MIN_ROTATION_ROT){
       armPosition += controller.getLeftY() * armScaleConstant * 0.001;
 
@@ -323,19 +322,22 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Extender Length Meters" , currentExtenderLength);
     SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
     SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-
+    if(controller.getYButtonPressed()){ //control to position of an element
+      
+    }
 
     if (controller.getXButtonPressed())
       extenderEncoder.setPosition(0);
 
     if (controller.getBButtonPressed())
       armEncoder.setPosition(0);
+    if (controller.getAButtonPressed()) {
+      System.out.println("Trigger pressed, turning to 180 deg");
+      new TurnToAngle(180, drive).schedule();
+    }
 
     var gyro = drive.getGyro();
-    System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
-
-
-    //arm.set(controller.getLeftY());
+    //System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
 
     // if (controller.getAButtonPressed()) {
     //   solenoid.set(Value.kForward);
