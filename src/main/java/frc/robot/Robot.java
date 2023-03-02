@@ -116,17 +116,18 @@ public class Robot extends TimedRobot {
     moveDInput = tab.add("kMoveD", Constants.DriveConstants.kMoveD).getEntry();
   
     compressor.disable();
+
     arm.restoreFactoryDefaults();
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
-    extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
 
+    extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
     extender.setInverted(true);
 
     armEncoder = arm.getEncoder();
-    extenderEncoder = extender.getEncoder();
-
-    extenderEncoder.setPosition(0);
     armEncoder.setPosition(0);
+
+    extenderEncoder = extender.getEncoder();
+    extenderEncoder.setPosition(0);
 
     armPID = arm.getPIDController();
     armAngle = armEncoder.getPosition();
@@ -142,8 +143,6 @@ public class Robot extends TimedRobot {
     armPID.setFF(0);
 
     // sets absolute encoder limits for arm
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ArmConstants.MIN_ROTATION);
-    arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ArmConstants.MAX_ROTATION);
     // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
 
     extenderPID.setP(0.1);
@@ -153,8 +152,8 @@ public class Robot extends TimedRobot {
     extenderPID.setIZone(0);
     extenderPID.setFF(0);
 
-    extender.setSmartCurrentLimit(15);
-    arm.setSmartCurrentLimit(15);
+    extender.setSmartCurrentLimit(5);
+    arm.setSmartCurrentLimit(5);
   }
 
   @Override
@@ -366,13 +365,14 @@ public class Robot extends TimedRobot {
 
     if (controller.getXButtonPressed()) {
       // Align arm with level two game node height
-      double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
-          + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
-      double angle = Math
-          .atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT - Constants.ArmConstants.ARM_HEIGHT) / armLength);
-      System.out.println("armLength: " + armLength);
-      System.out.println("arm angle: " + angle);
-      armAngle = Constants.ArmConstants.ARM_GEARING * angle;
+
+      // double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
+      //     + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
+      // double angle = Math
+      //     .atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT - Constants.ArmConstants.ARM_HEIGHT) / armLength);
+      // System.out.println("armLength: " + armLength);
+      // System.out.println("arm angle: " + angle);
+      // armAngle = Constants.ArmConstants.ARM_GEARING * angle;
     }
 
     armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
@@ -385,6 +385,8 @@ public class Robot extends TimedRobot {
       double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
 
       pressureController.calculate(pressure, 60);
+
+      if (pressure <= 120)
 
       System.out.println("Pressure estimate: " + pressure);
 
