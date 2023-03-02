@@ -10,11 +10,12 @@ import frc.robot.Constants.FieldConstants;
 public class ArmSubsystem {
 
     public enum ArmTargetChoice {
+
+        MANUAL_CONTROL,
         LEVEL_TWO_POLE,
         LEVEL_TWO_PLATFORM,
         LEVEL_THREE_POLE,
         LEVEL_THREE_PLATFORM,
-        MANUAL_CONTROL
     }
     private ArmTargetChoice targetChoice = ArmTargetChoice.MANUAL_CONTROL;
     private CANSparkMax arm;
