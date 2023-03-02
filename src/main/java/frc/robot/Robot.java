@@ -97,9 +97,6 @@ public class Robot extends TimedRobot {
   private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
   private final CANSparkMax extender = new CANSparkMax(RobotMap.EXTENDER, MotorType.kBrushless);
 
-  double armPosition;
-  double extenderPosition;
-
   private final RelativeEncoder armEncoder = arm.getEncoder();
   private final RelativeEncoder extenderEncoder = extender.getEncoder();
 
@@ -120,10 +117,7 @@ public class Robot extends TimedRobot {
     extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_POSITION);
     armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
     armPID = arm.getPIDController();
-    armPosition = armEncoder.getPosition();
-
     extenderPID = extender.getPIDController();
-    extenderPosition =  extenderEncoder.getPosition();
 
     armPID.setP(0.05);
     armPID.setI(0.000);
@@ -279,10 +273,6 @@ public class Robot extends TimedRobot {
       if(controller.getRightBumper())
         armSubSys.changeArmPosition(-5);
 
-    extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_POSITION,
-     Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_POSITION));
-
-    extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
 
     //ARM
@@ -389,7 +379,6 @@ public class Robot extends TimedRobot {
     if(controller.getRightBumper()){
       extenderPosition=extenderPosition-0.01;
     }
-    extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
     System.out.println("Extender position: " + extenderPosition);
 
     // ARM
