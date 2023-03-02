@@ -255,7 +255,7 @@ public class Robot extends TimedRobot {
     System.out.println("Arm Encoder: " + armEncoder.getPosition());
     System.out.println("target Mode: " + targetModes[mode]);
     if(controller.getYButtonPressed()){ //control to position of Level Three Pole
-      armSubSys.setTargetMode(targetModes[0]);     
+      armSubSys.setTargetMode(ArmSub);     
     }
 
     if (controller.getXButtonPressed())
