@@ -253,49 +253,19 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    extenderPosition = 0;
-    extenderEncoder.setPosition(0);
   }
 
   @Override
   public void teleopPeriodic() {
-    System.out.printf("Extender target position: %.4f; extender position: %.4f; target arm position: %.4f; current arm angle: %.4f\n",
-      extenderPosition,
-      extenderEncoder.getPosition(),
-      armAngle,
-      armEncoder.getPosition());
+    double leftSpeed = -controller.getLeftY();
+    double rightSpeed = -controller.getRightY();
 
-    return;
+    leftSpeed = Math.copySign(Math.max(0, Math.abs(leftSpeed) - 0.05), leftSpeed);
+    rightSpeed = Math.copySign(Math.max(0, Math.abs(rightSpeed) - 0.05), rightSpeed);
 
-    // Maybe switch to SlewRateLimiter or PID for smoother control?
-    // var speed = Math.pow(-joystick.getY(), 3);
-    // var rot = Math.pow(joystick.getX(), 3);
-
-    // // System.out.println("controller: " + controller.getLeftY() + ", " + controller.getRightX() + "; speed: " + speed + "; rot:" + rot);
-    
-    // // No flip for actual robot
-    // drive.differentialDrive(speed, rot); // Flip CW/CCW
-
-    // if (controller.getAButton()) {
-    //   System.out.println("Trigger pressed, turning to 180 deg");
-    //   new TurnToAngle(180, drive).schedule();
-    // }
-
-    // if (controller.getBButton()) {
-    //   new Balance(drive).schedule();
-    // }
-
-    // if (joystick.getTrigger()) {
-    //   CommandScheduler.getInstance().run();
-    // }
-
-    // arm.set(controller.getLeftY());
-
-    // if (controller.getAButtonPressed()) {
-    //   solenoid.set(Value.kForward);
-    // } else if (controller.getAButtonReleased()) {
-    //   solenoid.set(Value.kReverse);
-    // }
+    drive.left.set(leftSpeed);
+    drive.right.set(rightSpeed);
+    System.out.printf("Left: %.3f, right: %.3f\n", leftSpeed, rightSpeed);
   }
 
 
