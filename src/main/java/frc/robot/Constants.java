@@ -58,7 +58,7 @@ public class Constants {
 
     static class ExtenderConstants {
         static final double EXTENDER_GEARING = 1/5;
-        static final double MAX_EXTENDER_POSITION = 0.0714285671710968; //I hate myself and I hate this number
+        static final double MAX_EXTENDER_POSITION = 15; //I hate myself and I hate this number
         static final double MIN_EXTENDER_POSITION = 0; //I hate myself and I hate this number
         //this^ number is for the encoder rotations at max arm length 
         static final double MIN_ARM_LENGTH = Units.inchesToMeters(20.5);

@@ -121,26 +121,20 @@ public class Robot extends TimedRobot {
     extenderPID = extender.getPIDController();
     extenderPosition =  extenderEncoder.getPosition();
 
-    armPID.setP(0.01);
-    armPID.setI(0.001);
-    armPID.setD(0.001);
+    armPID.setP(0.05);
+    armPID.setI(0.000);
+    armPID.setD(0.000);
     armPID.setOutputRange(-1, 1);
     armPID.setIZone(0);
     armPID.setFF(0);
 
-    // sets absolute encoder limits for arm
-
-    //arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ArmConstants.MIN_ROTATION);
-    //arm.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, (float) Constants.ArmConstants.MAX_ROTATION);
-
-    // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
-
-    extenderPID.setP(0.1);
-    extenderPID.setI(0.01);
-    extenderPID.setD(0.00000);
+    extenderPID.setP(0.01);
+    extenderPID.setI(0.00001);
+    extenderPID.setD(0);
     extenderPID.setOutputRange(-1, 1);
     extenderPID.setIZone(0);
     extenderPID.setFF(0);
+
 
     //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, (float) Constants.ExtenderConstants.MAX_EXTENDER_POSITION);
     //extender.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, 0f);
@@ -267,15 +261,15 @@ public class Robot extends TimedRobot {
     //TODO: Temp disabled for later joystick implementation
 
 
- //EXTENDER
+ //EXTENDER //3.6 inches for every 5 rotations of the motr
       final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
 
       if(controller.getLeftBumper())
-        extenderPosition += extenderScaleConstant;
+        extenderPosition += extenderScaleConstant*0.01;
       if(controller.getRightBumper())
-        extenderPosition -= extenderScaleConstant;
+        extenderPosition -= extenderScaleConstant*0.01;
 
-    extenderPosition = Math.max(0, Math.min(extenderPosition, 15));
+    extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_POSITION, Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_POSITION));
 
     extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
