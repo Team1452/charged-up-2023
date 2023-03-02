@@ -42,6 +42,7 @@ import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
@@ -53,6 +54,8 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -96,6 +99,11 @@ public class Robot extends TimedRobot {
 
   private final Joystick joystick = new Joystick(0);
 
+  private final ShuffleboardTab tab = Shuffleboard.getTab("Robot Test " + Math.random());
+
+  private GenericEntry turnPInput, turnIInput, turnDInput;
+  private GenericEntry movePInput, moveIInput, moveDInput;
+
   private int tick = 0;
 
   double armAngle;
@@ -103,6 +111,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
+    movePInput = tab.add("kMoveP", Constants.DriveConstants.kMoveP).getEntry();
+    moveIInput = tab.add("kMoveI", Constants.DriveConstants.kMoveI).getEntry();
+    moveDInput = tab.add("kMoveD", Constants.DriveConstants.kMoveD).getEntry();
+  
     compressor.disable();
     arm.restoreFactoryDefaults();
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
@@ -148,6 +160,9 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     tick += 1;
+    Constants.DriveConstants.kMoveP = movePInput.getDouble(0);
+    Constants.DriveConstants.kMoveI = moveIInput.getDouble(0);
+    Constants.DriveConstants.kMoveD = moveDInput.getDouble(0);
   }
 
   @Override
@@ -216,7 +231,10 @@ public class Robot extends TimedRobot {
     // sequence.schedule();
 
     // rotateAngles.schedule();
-    rotateAngles.schedule();
+    
+    // new TurnToAngle(drive.getHeading() + 90, drive).schedule();
+    new MoveDistance(1, drive).schedule();
+
     // followRectangleOdom.schedule();
 
 
@@ -276,6 +294,8 @@ public class Robot extends TimedRobot {
     leftSolenoid.set(Value.kOff); // Off by default
     rightSolenoid.set(Value.kOff);
 
+    drive.setIdleMode(IdleMode.kBrake);
+
     extenderPosition = 0;
     extenderEncoder.setPosition(0);
     extender.setIdleMode(IdleMode.kBrake);
@@ -330,12 +350,12 @@ public class Robot extends TimedRobot {
     // ARM
     if (controller.getLeftBumper()) {
       // Turn counterclockwise
-      armAngle += 0.1;
+      armAngle += 0.3;
     }
 
     if (controller.getRightBumper()) {
       // Turn clockwise
-      armAngle -= 0.1;
+      armAngle -= 0.3;
     }
 
     System.out.printf("Extender target position: %.4f; extender position: %.4f; target arm position: %.4f; current arm angle: %.4f\n",
