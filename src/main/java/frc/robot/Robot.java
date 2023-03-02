@@ -105,13 +105,17 @@ public class Robot extends TimedRobot {
 
   private SparkMaxPIDController armPID;
   private SparkMaxPIDController extenderPID;
+  private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.EXTENDER);
 
   private final SendableChooser<String> armChooser = new SendableChooser<>();
   @Override
   public void robotInit() {
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    arm.restoreFactoryDefaults();
+    extender.restoreFactoryDefaults();
+
     compressor.disable();
-    arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
-    extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
 
     extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_POSITION);
     armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
@@ -147,6 +151,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+
     Command moveForward = new MoveDistance(10, drive);
     Command moveBackward = new MoveDistance(-3, drive);
     Command balance = new Balance(drive);
@@ -247,6 +255,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousExit() {
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast); //TODO: VERY IMPORTANT DISABLE THIS FOR COMPETITION
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
   }
@@ -265,11 +275,12 @@ public class Robot extends TimedRobot {
       final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_POSITION - Constants.ExtenderConstants.MIN_EXTENDER_POSITION); 
 
       if(controller.getLeftBumper())
-        extenderPosition += extenderScaleConstant*0.01;
+        armSubSys.changeArmPosition(5);
       if(controller.getRightBumper())
-        extenderPosition -= extenderScaleConstant*0.01;
+        armSubSys.changeArmPosition(-5);
 
-    extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_POSITION, Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_POSITION));
+    extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_POSITION,
+     Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_POSITION));
 
     extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
@@ -278,22 +289,15 @@ public class Robot extends TimedRobot {
 
     final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
     final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
+
     //This currently uses the current extender length and then controls for position but below I have code to get to angle and then control for length
     final double currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
           + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
     final double armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
 
-    if(armPosition<Constants.ArmConstants.MAX_ROTATION_ROT && armPosition > Constants.ArmConstants.MIN_ROTATION_ROT){
-      armPosition += controller.getLeftY() * armScaleConstant * 0.001;
+    armPosition += armScaleConstant*0.01*controller.getLeftY();
 
-      if (controller.getLeftBumper()) {
-        armPosition += 0.3;
-      }
-      if (controller.getLeftBumper()) {
-        armPosition -= 0.3;
-      }
-    }
-
+    armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT, Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
     armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
     SmartDashboard.putNumber("arm Height", armHeight);
@@ -307,7 +311,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
     System.out.print("Arm Encoder: " + armEncoder.getPosition());
     SmartDashboard.putNumber("arm Height", armHeight);
-    if(controller.getYButtonPressed()){ //control to position of an element
+    if(controller.getYButtonPressed()){ //control to position of Level Three Pole
       
     }
 
@@ -341,6 +345,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
     leftSolenoid.set(Value.kOff); // Off by default
     rightSolenoid.set(Value.kOff);
   }
@@ -364,8 +370,8 @@ public class Robot extends TimedRobot {
     // DRIVE
 
     // Controller forward is negative
-    double speed = Math.pow(-controller.getLeftY(), 3.0);
-    double turn = Math.pow(controller.getLeftX(), 3.0);
+    double speed = Math.pow(-controller.getRightY(), 3.0);
+    double turn = Math.pow(controller.getRightX(), 3.0);
 
     // System.out.println("Joystick y: " + joystick.getY() + " ; joystick x: " + joystick.getX());
     // double joystickY = Math.signum(joystick.getY()) * Math.max(0, Math.abs(joystick.getY()) - 0.1);
@@ -377,7 +383,6 @@ public class Robot extends TimedRobot {
     drive.differentialDrive(speed, -turn);
 
     // EXTENDER
-    //extenderPosition = controller.getLeftTriggerAxis();
     if(controller.getLeftBumper()){
       extenderPosition=extenderPosition+0.01;
     }
@@ -434,5 +439,6 @@ public class Robot extends TimedRobot {
         rightSolenoid.set(Value.kReverse);
       }
     }
+
   }
 }

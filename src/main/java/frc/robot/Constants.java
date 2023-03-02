@@ -108,15 +108,19 @@ public class Constants {
         static final double LEVEL_THREE_PLATFORM_HEIGHT = 0.9;//from bottom of platform
         static final double FLOOR_HEIGHT = 0; //hot take?
 
-        static final double LEVEL_TWO_POLE_ARM_LENGTH = 0; //TODO
+
+    }
+    static class ArmExPos{
+        //All arm angles here are to be in rotations
+        static final double LEVEL_TWO_POLE_ARM_LENGTH = 0; //TODO 
         static final double LEVEL_THREE_POLE_ARM_LENGTH = 0; //TODO
         static final double LEVEL_TWO_PLATFORM_ARM_LENGTH = 0; //TODO
         static final double LEVEL_THREE_PLATFORM_ARM_LENGTH = 0; //TODO
+
         static final double LEVEL_TWO_POLE_ARM_ANGLE = 0; //TODO
         static final double LEVEL_THREE_POLE_ARM_ANGLE = 0; //TODO
         static final double LEVEL_TWO_PLATFORM_ARM_ANGLE = 0; //TODO
         static final double LEVEL_THREE_PLATFORM_ARM_ANGLE = 0; //TODO
-
     }
 
     static class VisionConstants {
