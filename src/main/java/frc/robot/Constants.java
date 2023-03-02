@@ -20,9 +20,9 @@ public class Constants {
         public static final double kMoveToleranceMeters = Units.inchesToMeters(1);
 
         // public static final double kTurnP = 0.04;
-        public static final double kTurnP = 0.1;
-        public static final double kTurnI = 0.001;
-        public static final double kTurnD = 0.001;
+        public static final double kTurnP = 0.01;
+        public static final double kTurnI = 0;
+        public static final double kTurnD = 0;
         public static final double kTurnAngleToleranceDegrees = 3;
 
         public static final double kBalanceP = 0.1;
@@ -33,15 +33,16 @@ public class Constants {
 
     static class ExtenderConstants {
         static final double EXTENDER_GEARING = 1/5;
-        static final double MAX_EXTENDER_ROTATION = 0.0714285671710968; //I hate myself and I hate this number
-        //this^ number is for the encoder rotations at max arm length 
+
+        static final double MAX_EXTENDER_ROTATIONS = 33.55;
+        static final double MIN_EXTENDER_ROTATIONS = 0;
+
         static final double MIN_ARM_LENGTH = Units.feetToMeters(20.5);
         static final double MAX_ARM_LENGTH = Units.feetToMeters(51);
-        static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_ROTATION;
+        static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_ROTATIONS;
 
         static final double MIN_ARM_EXTENSION = 0;
         static final double MAX_ARM_EXTENSION = MAX_ARM_LENGTH - MIN_ARM_LENGTH;
-        
     }
 
     static class ArmConstants {
