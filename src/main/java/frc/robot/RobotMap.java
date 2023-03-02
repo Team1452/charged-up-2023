@@ -9,7 +9,11 @@ public class RobotMap {
     public static boolean MOTOR_LEFT_INVERTED = true;
     public static boolean MOTOR_RIGHT_INVERTED = true;
     public static int MOTOR_ARM = 12;
+<<<<<<< HEAD
     public static int EXTENDER = 15;
+=======
+    public static int MOTOR_EXTEND = 15;
+>>>>>>> origin/friday-test-rollback
     public static int PIGEON = 10;
 
     public static int[] SOLENOID_1 = {2, 5};

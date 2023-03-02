@@ -104,6 +104,10 @@ public class Robot extends TimedRobot {
   private SparkMaxPIDController extenderPID;
   private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.EXTENDER);
 
+  private ArmSubsystem.ArmTargetChoice[] targetModes = {ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM,
+     ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE,
+     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM,
+     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE};
   private final SendableChooser<String> armChooser = new SendableChooser<>();
   @Override
   public void robotInit() {
@@ -254,8 +258,6 @@ public class Robot extends TimedRobot {
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
   }
-  String[] armTargetChoices = {"Level Two Pole", "Level Three Pole", "Level Three Platform", "Level Two Platform", "Manual Control"};
-  String chosenArmTarget = "Manual Control";
   @Override
   public void teleopPeriodic() {
     //var speed = Math.pow(-joystick.getY(), 3);
@@ -283,26 +285,23 @@ public class Robot extends TimedRobot {
     //This currently uses the current extender length and then controls for position but below I have code to get to angle and then control for length
     final double currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
           + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
-    final double armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
 
-    armPosition += armScaleConstant*0.01*controller.getLeftY();
+    armSubSys.changeArmPosition(controller.getLeftY());
 
-    armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT, Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
-    armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
-
-    SmartDashboard.putNumber("arm Height", armHeight);
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
     SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
     SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armHeight - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
     SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armHeight - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
     SmartDashboard.putNumber("Extender Length Meters" , currentExtenderLength);
     SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
     SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
     System.out.print("Arm Encoder: " + armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armHeight);
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+
     if(controller.getYButtonPressed()){ //control to position of Level Three Pole
-      
+      armSubSys.setTargetMode();     
     }
 
     if (controller.getXButtonPressed())

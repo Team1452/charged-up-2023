@@ -28,8 +28,8 @@ public class DriveSubsystem extends SubsystemBase {
   // private final CANSparkMax leftMotor = new CANSparkMax(RobotMap.MOTOR_LEFT, CANSparkMaxLowLevel.MotorType.kBrushless);
   // private final CANSparkMax rightMotor = new CANSparkMax(RobotMap.MOTOR_RIGHT, CANSparkMaxLowLevel.MotorType.kBrushless);
 
-  private final MotorControllerGroup left;
-  private final MotorControllerGroup right;
+  public final MotorControllerGroup left;
+  public final MotorControllerGroup right;
 
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
