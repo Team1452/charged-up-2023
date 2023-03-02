@@ -34,6 +34,9 @@ public class DriveSubsystem extends SubsystemBase {
   private final RelativeEncoder leftEncoder;
   private final RelativeEncoder rightEncoder;
 
+  private final boolean leftInverted;
+  private final boolean rightInverted;
+
   private final WPI_Pigeon2 gyro = new WPI_Pigeon2(RobotMap.PIGEON);
 
   private final DifferentialDriveKinematics kinematics =
@@ -71,7 +74,7 @@ public class DriveSubsystem extends SubsystemBase {
     return motors;
   }
 
-  public DriveSubsystem(int[] leftIds, int[] rightIds) {
+  public DriveSubsystem(int[] leftIds, boolean leftInverted, int[] rightIds, boolean rightInverted) {
     pcw = new PhotonCameraWrapper();
     leftMotors = motorsFromIds(leftIds);
     rightMotors = motorsFromIds(rightIds);
@@ -85,12 +88,14 @@ public class DriveSubsystem extends SubsystemBase {
     leftEncoder.setPosition(0);
     rightEncoder.setPosition(0);
 
-    // Invert right motor (positive should be forward, negative backward)
-    // left.setInverted(true);
-    right.setInverted(true);
-
     leftEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
     rightEncoder.setPositionConversionFactor(DriveConstants.kDistancePerPulse);
+
+    this.leftInverted = leftInverted;
+    this.rightInverted = rightInverted;
+
+    left.setInverted(leftInverted);
+    right.setInverted(rightInverted);
 
     gyro.reset();
   }
@@ -114,13 +119,25 @@ public class DriveSubsystem extends SubsystemBase {
     setWithLimit(right, speed - turn);
   }
 
+  double getLeftPosition() {
+    double position = leftEncoder.getPosition();
+    if (leftInverted) return -position;
+    else return position;
+  }
+
+  double getRightPosition() {
+    double position = rightEncoder.getPosition();
+    if (rightInverted) return -position;
+    else return position;
+  }
+
   /** Updates the field-relative position. */
   public void updateOdometry() {
     // Left encoder is inverted
     poseEstimator.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), getLeftPosition(), getRightPosition());
     poseEstimatorWithVision.update(
-            gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition());
+            gyro.getRotation2d(), getLeftPosition(), getRightPosition());
 
     // Also apply vision measurements. We use 0.3 seconds in the past as an example
     // -- on
@@ -152,12 +169,11 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public double getPosition() {
-    // Left is inverted
-    return (leftEncoder.getPosition() - rightEncoder.getPosition())/2;
+    return (getLeftPosition() + getRightPosition())/2;
   }
 
   public void resetPosition(Pose2d pose) {
-    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), leftEncoder.getPosition(), -rightEncoder.getPosition(), pose);
+    poseEstimatorWithVision.resetPosition(gyro.getRotation2d(), getLeftPosition(), getRightPosition(), pose);
   }
 
   public void resetPositionOdometry() {

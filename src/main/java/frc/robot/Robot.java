@@ -61,9 +61,11 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
+
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
+import frc.robot.commands.CenterPhotonVisionTarget;
 
 public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
@@ -92,7 +94,7 @@ public class Robot extends TimedRobot {
   private SparkMaxPIDController armPID;
   private SparkMaxPIDController extenderPID;
 
-  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_RIGHT);
+  private DriveSubsystem drive;
 
   private RelativeEncoder armEncoder;
   private RelativeEncoder extenderEncoder;
@@ -109,6 +111,10 @@ public class Robot extends TimedRobot {
   double armAngle;
   double extenderPosition;
 
+  public Robot() {
+    super(Constants.PERIOD_MS/1000);
+  }
+
   @Override
   public void robotInit() {
     movePInput = tab.add("kMoveP", Constants.DriveConstants.kMoveP).getEntry();
@@ -116,6 +122,14 @@ public class Robot extends TimedRobot {
     moveDInput = tab.add("kMoveD", Constants.DriveConstants.kMoveD).getEntry();
   
     compressor.disable();
+    
+    if (RobotMap.USING_TESTBED) {
+      // Testbed
+      drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_LEFT_INVERTED, RobotMap.TEST_MOTOR_RIGHT, RobotMap.TEST_MOTOR_RIGHT_INVERTED);
+    } else {
+      // Competition robot
+      drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_LEFT_INVERTED, RobotMap.MOTOR_RIGHT, RobotMap.MOTOR_RIGHT_INVERTED);
+    }
 
     arm.restoreFactoryDefaults();
     arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
@@ -283,6 +297,8 @@ public class Robot extends TimedRobot {
     drive.left.set(leftSpeed);
     drive.right.set(rightSpeed);
     System.out.printf("Left: %.3f, right: %.3f\n", leftSpeed, rightSpeed);
+
+    CommandScheduler.getInstance().run();
   }
 
 

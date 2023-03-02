@@ -4,6 +4,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import frc.robot.DriveSubsystem;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.util.Utils;
 
 // TODO: Migrate this to PIDCommand()
 public class TurnToAngle extends PIDCommand {
@@ -14,7 +15,7 @@ public class TurnToAngle extends PIDCommand {
             () -> drive.getHeading(),
             targetAngleDegrees,
             output -> {
-                System.out.println("Current angle: " + drive.getHeading() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
+                System.out.println("Current angle: " + drive.getGyro().getYaw() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
                 drive.differentialDrive(0, output);
             },
             drive);
@@ -44,6 +45,13 @@ public class TurnToAngle extends PIDCommand {
 
     @Override
     public boolean isFinished() {
-        return getController().atSetpoint();
+        System.out.println("Is finished? " + getController().atSetpoint() + "; " + getController().getPositionTolerance() + "; " + getController().getVelocityTolerance() + "; " + getController().getPositionError());
+        
+        // atSetpoint() would return false even when within tolerance.
+        // No idea why? TODO: Figure out why
+
+        // return getController().atSetpoint();
+        // return Math.abs(getController().getPositionError()) < getController().getPositionTolerance();
+        return Utils.atSetpoint(m_controller);
     }
 }

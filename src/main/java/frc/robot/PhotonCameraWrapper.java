@@ -17,6 +17,7 @@ import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
 import org.photonvision.PhotonPoseEstimator.PoseStrategy;
+import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
 public class PhotonCameraWrapper {
@@ -59,9 +60,16 @@ public class PhotonCameraWrapper {
         System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
 
         // Create pose estimator
-        photonPoseEstimator =
-                new PhotonPoseEstimator(
-                        atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
+        // photonPoseEstimator =
+        //         new PhotonPoseEstimator(
+        //                 atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
+
+    }
+
+    public PhotonTrackedTarget getTarget() {
+        PhotonPipelineResult result = photonCamera.getLatestResult();
+        if (result.hasTargets()) return result.getBestTarget();
+        else return null;
     }
 
     /**
@@ -71,7 +79,8 @@ public class PhotonCameraWrapper {
      */
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose(Pose2d prevEstimatedRobotPose) {
         // photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
-        return photonPoseEstimator.update();
+        // return photonPoseEstimator.update();
+        return Optional.empty();
     }
     public List<PhotonTrackedTarget> getTargets() {
         var result = photonCamera.getLatestResult();
