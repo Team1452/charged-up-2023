@@ -125,15 +125,15 @@ public class Robot extends TimedRobot {
     armPID = arm.getPIDController();
     extenderPID = extender.getPIDController();
 
-    armPID.setP(0.05);
-    armPID.setI(0.000);
-    armPID.setD(0.000);
+    armPID.setP(0.1);
+    armPID.setI(0.0001);
+    armPID.setD(0.001);
     armPID.setOutputRange(-1, 1);
     armPID.setIZone(0);
     armPID.setFF(0);
 
-    extenderPID.setP(0.01);
-    extenderPID.setI(0.00001);
+    extenderPID.setP(0.1);
+    extenderPID.setI(0);
     extenderPID.setD(0);
     extenderPID.setOutputRange(-1, 1);
     extenderPID.setIZone(0);
@@ -212,32 +212,8 @@ public class Robot extends TimedRobot {
       .andThen(new TurnToAngle(0, drive));
 
     System.out.println("Scheduling command");
-    // sequence.schedule();
-
-    // rotateAngles.schedule();
-    // rotateAngles.schedule();
-
-    // new SequentialCommandGroup(
-    //   new MoveDistance(1, drive),
-    //   new TurnToAngle(-90, drive),
-    //   new MoveDistance(1, drive),
-    //   new TurnToAngle(-180, drive),
-    //   new MoveDistance(1, drive)
-    // ).schedule();
 
     new CenterPhotonVisionTarget(drive).schedule();
-
-    // followRectangleOdom.schedule();
-
-
-
-    // Command moveForward = new MoveDistance(10, drive);
-    // Command moveBackward = new MoveDistance(-3, drive);
-    // Command balance = new Balance(drive);
-
-    // moveForward
-    //   .andThen(moveBackward)
-    //   .andThen(balance);
   }
 
   @Override
@@ -275,15 +251,6 @@ public class Robot extends TimedRobot {
     final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
     final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
 
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
-    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
-    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
 
     System.out.println("Arm Encoder: " + armEncoder.getPosition());
     System.out.println("target Mode: " + targetModes[mode]);
@@ -301,7 +268,6 @@ public class Robot extends TimedRobot {
       new TurnToAngle(180, drive).schedule();
     }
 
-    var gyro = drive.getGyro();
     //System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
 
     // if (controller.getAButtonPressed()) {
@@ -310,9 +276,17 @@ public class Robot extends TimedRobot {
     //   solenoid.set(Value.kReverse);
     // }
 
-    //ARM
 
-    // Run scheduled commands
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
+    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
+    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+
     CommandScheduler.getInstance().run();
   }
 
