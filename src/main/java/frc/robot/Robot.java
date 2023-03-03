@@ -151,9 +151,9 @@ public class Robot extends TimedRobot {
     extenderPID = extender.getPIDController();
     extenderPosition = extenderEncoder.getPosition();
 
-    armPID.setP(0.002);
+    armPID.setP(0.2);
     armPID.setI(0);
-    armPID.setD(0);
+    armPID.setD(0.0001);
     armPID.setOutputRange(-1, 1);
     armPID.setIZone(0);
     armPID.setFF(0);
@@ -161,9 +161,9 @@ public class Robot extends TimedRobot {
     // sets absolute encoder limits for arm
     // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
 
-    extenderPID.setP(0.002);
-    extenderPID.setI(0);
-    extenderPID.setD(0);
+    extenderPID.setP(0.2);
+    extenderPID.setI(0.0);
+    extenderPID.setD(0.0001);
     extenderPID.setOutputRange(-1, 1);
     extenderPID.setIZone(0);
     extenderPID.setFF(0);
@@ -334,6 +334,7 @@ public class Robot extends TimedRobot {
   public void testExit() {
     arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
     extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    armAngle = armEncoder.getPosition();
   }
 
   boolean pistonForward = false;
