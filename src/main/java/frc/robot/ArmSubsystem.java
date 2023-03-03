@@ -47,6 +47,8 @@ public class ArmSubsystem {
 
         armEncoder = arm.getEncoder();
         extenderEncoder = extender.getEncoder();
+        armEncoder.setPosition(0);
+        extenderEncoder.setPosition(0);
         extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS);
         armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
         armPID = arm.getPIDController();
