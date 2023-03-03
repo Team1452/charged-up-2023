@@ -59,6 +59,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
+import frc.robot.ArmSubsystem.ArmTargetChoice;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
@@ -95,7 +96,7 @@ public class Robot extends TimedRobot {
   private int tick = 0;
 
   private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.MOTOR_EXTEND);
-  private int mode = 0;
+  private ArmSubsystem.ArmTargetChoice target = ArmTargetChoice.MANUAL_CONTROL;
   private ArmSubsystem.ArmTargetChoice[] targetModes = {
     ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL,
     ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM,
@@ -199,39 +200,88 @@ public class Robot extends TimedRobot {
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
   }
+
+  boolean pistonForward = false;
+  boolean compressorEnabled = false;
+
+  boolean controlMode = true;
+  double pressure = 0;
+  boolean pistonForward2 = false;
   @Override
   public void teleopPeriodic() {
+    double joystickThrottle = joystick.getThrottle()*0.01; //TODO: Not sure if this value is on the bound [0, 100] or [0, 1]
+    boolean joystickTrigger = joystick.getTrigger();
+    double speed = joystick.getY();
+    double turn = joystick.getX();
+    drive.differentialDrive(speed*joystickThrottle, turn);
+    for(int i = 0; i < joystick.getButtonCount(); i++){
+      System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
+    }
+    if(joystick.getRawButtonPressed(7)){
+      target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
+    }
+    if(joystick.getRawButtonPressed(9)){
+      target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
+    }
+    if(joystick.getRawButtonPressed(8)){
+      target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
+    }
+    if(joystick.getRawButtonPressed(11)){
+      target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+    }
+    if(joystick.getRawButtonPressed(12)){
+      target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
+    }
+
  //EXTENDER //3.6 inches for every 5 rotations of the motr
-      if(controller.getLeftBumper())
-        armSubSys.changeArmPosition(0.5);
-      if(controller.getRightBumper())
-        armSubSys.changeArmPosition(-0.5);
+    if(controller.getLeftBumper())
+      armSubSys.changeArmPosition(0.5);
+    if(controller.getRightBumper())
+      armSubSys.changeArmPosition(-0.5);
 
-    if(controller.getRightTriggerAxis()>0.3){
-      armSubSys.changeExtenderPosition(controller.getRightTriggerAxis());
-    }
-    if(controller.getLeftTriggerAxis()>0.3){
-      armSubSys.changeExtenderPosition(-controller.getLeftTriggerAxis());
-    }
+    armSubSys.changeExtenderPosition(controller.getRightTriggerAxis()-controller.getLeftTriggerAxis());
     System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
-
     System.out.println("Arm Encoder: " + armSubSys.getArmEncoder().getPosition());
-    System.out.println("target Mode: " + targetModes[mode]);
+    System.out.println("Target Arm Position: " + target);
 
-    if (controller.getAButtonPressed()) {
       System.out.println("Trigger pressed, turning to 180 deg");
       new TurnToAngle(180, drive).schedule();
+
+    if (compressorEnabled) {
+      // Calculate pressure from analog input
+      // (from REV analog sensor datasheet)
+      double vOut = pressureSensor.getAverageVoltage();
+      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
+
+      pressureController.calculate(pressure, Constants.PneumaticConstants.TARGET_PRESSURE);
+      if (pressureController.atSetpoint()) {
+        compressor.enableDigital();
+      } else {
+        compressor.disable();
+      }
+    } else {
+      compressor.disable();
     }
 
-    //System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
+    if (controller.getAButtonPressed()) {
+      compressorEnabled = !compressorEnabled;
+    }
 
-    // if (controller.getAButtonPressed()) {
-    //   solenoid.set(Value.kForward);
-    // } else if (controller.getAButtonReleased()) {
-    //   solenoid.set(Value.kReverse);
-    // }
+    // PISTON
+    if (controller.getYButtonPressed()) {
+      pistonForward = !pistonForward;
+      System.out.println("Enabling solenoid: " + pistonForward);
+      if (pistonForward) {
+        leftSolenoid.set(Value.kReverse);
+        rightSolenoid.set(Value.kForward);
+      } else {
+        leftSolenoid.set(Value.kForward);
+        rightSolenoid.set(Value.kReverse);
+      }
+    }
 
     CommandScheduler.getInstance().run();
+    target = armSubsys.update();
   }
 
 
@@ -244,18 +294,10 @@ public class Robot extends TimedRobot {
     rightSolenoid.set(Value.kOff);
   }
 
-  boolean pistonForward = false;
-  boolean compressorEnabled = false;
-
-  boolean controlMode = true;
-  double pressure = 0;
-  boolean pistonForward2 = false;
 
   @Override
   public void testPeriodic() {
     
-    // double joystickThrottle = joystick.getThrottle();
-    // boolean joystickTrigger = joystick.getTrigger();
     // double pov = joystick.getPOV();
 
     // System.out.println("throttle: " + joystickThrottle + "; trigger: " + joystickTrigger + "; pov: " + pov);
@@ -263,18 +305,14 @@ public class Robot extends TimedRobot {
     // DRIVE
 
     // Controller forward is negative
+    double joystickThrottle = joystick.getThrottle();
+    boolean joystickTrigger = joystick.getTrigger();
     double speed = Math.pow(-controller.getRightY(), 3.0);
     double turn = Math.pow(controller.getRightX(), 3.0);
 
     drive.differentialDrive(speed, -turn);
 
-    // EXTENDER
-    if(controller.getRightTriggerAxis()>0){
-      armSubSys.changeExtenderPosition(-controller.getRightTriggerAxis());
-    }
-    if(controller.getLeftTriggerAxis()>0){
-      armSubSys.changeExtenderPosition(-controller.getLeftTriggerAxis());
-    }
+    armSubSys.changeExtenderPosition(controller.getLeftTriggerAxis()-controller.getRightTriggerAxis());
     System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
 
     // COMPRESSOR

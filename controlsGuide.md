@@ -10,9 +10,6 @@ Right Bumber : Bring Arm Up
 Right Trigger Axis : Retract Extender
 Left Trigger Axis : Extend Extender
 
-<<<<<<< HEAD
-
-=======
 # Rex Notes
 But basically
 - Stick left and right turn the robot
@@ -25,7 +22,6 @@ But basically
 
 Anything we need to control that I missed?
 Also do you think we’ll have automated positioning at the tournament or nah?
->>>>>>> rectangle-test
 
 
 # What to Do

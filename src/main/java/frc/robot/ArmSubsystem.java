@@ -94,26 +94,43 @@ public class ArmSubsystem {
     public void setTargetMode(ArmTargetChoice t){
         targetChoice = t;
     }
-    public void update(){
+    public ArmTargetChoice update(){
+        ArmTargetChoice out = ArmTargetChoice.MANUAL_CONTROL;
         switch(targetChoice){
-            case LEVEL_TWO_POLE       : armPosition = Constants.ArmExPos.LEVEL_TWO_POLE_ARM_ANGLE;        
-            extenderPosition = Constants.ArmExPos.LEVEL_TWO_POLE_ARM_LENGTH; 
-            case LEVEL_THREE_POLE     : armPosition = Constants.ArmExPos.LEVEL_THREE_POLE_ARM_ANGLE;      
-            extenderPosition = Constants.ArmExPos.LEVEL_THREE_POLE_ARM_LENGTH;
-            case LEVEL_THREE_PLATFORM : armPosition = Constants.ArmExPos.LEVEL_THREE_PLATFORM_ARM_ANGLE;  
-            extenderPosition = Constants.ArmExPos.LEVEL_THREE_PLATFORM_ARM_LENGTH;
-            case LEVEL_TWO_PLATFORM : armPosition = Constants.ArmExPos.LEVEL_TWO_PLATFORM_ARM_ANGLE;    
-            extenderPosition = Constants.ArmExPos.LEVEL_TWO_PLATFORM_ARM_LENGTH;
-            default : ;
+            case LEVEL_TWO_POLE: armPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
+            extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
+            out = ArmTargetChoice.LEVEL_TWO_POLE;
+            break;
+            case LEVEL_THREE_POLE: armPosition = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;      
+            extenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
+            out = ArmTargetChoice.LEVEL_THREE_POLE;
+            break;
+            case LEVEL_THREE_PLATFORM: armPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;  
+            extenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
+            out = ArmTargetChoice.LEVEL_THREE_PLATFORM;
+            break;
+            case LEVEL_TWO_PLATFORM: armPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
+            extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
+            out = ArmTargetChoice.LEVEL_TWO_PLATFORM;
+            break;
+            default:
+            break;
         }
+
+        //if we're at the arm position then we switch back to manual control
+        if(Math.abs(armEncoder.getPosition()-armPosition)<0.1 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1 ){
+            out = ArmTargetChoice.MANUAL_CONTROL;
+        }
+        armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
+        Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
+        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
         extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,
         Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS));
-        extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+        if(Math.abs(armEncoder.getPosition()-armPosition)<0.1)
+            extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
 
-        armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
-         Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
-        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
+        return out;
     }
     public double getArmHeight(){
         return armHeight;
