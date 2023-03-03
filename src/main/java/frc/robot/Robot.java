@@ -34,7 +34,6 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.BangBangController;
 import edu.wpi.first.math.controller.PIDController;
@@ -42,7 +41,6 @@ import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
@@ -55,13 +53,12 @@ import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
-
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
@@ -80,8 +77,6 @@ public class Robot extends TimedRobot {
   private final BangBangController pressureController = new BangBangController();
 
   // COUNTERCLOCKWISE is positive
-  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
-  private final CANSparkMax extender = new CANSparkMax(RobotMap.MOTOR_EXTEND, MotorType.kBrushless);
 
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
   private final SlewRateLimiter armSlewLimiter = new SlewRateLimiter(0.2, -0.2, 0);
@@ -91,111 +86,71 @@ public class Robot extends TimedRobot {
 
   private final AnalogInput pressureSensor = new AnalogInput(0);
 
-  private SparkMaxPIDController armPID;
-  private SparkMaxPIDController extenderPID;
 
-  private DriveSubsystem drive;
+  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
 
-  private RelativeEncoder armEncoder;
-  private RelativeEncoder extenderEncoder;
 
   private final Joystick joystick = new Joystick(0);
 
-  private final ShuffleboardTab tab = Shuffleboard.getTab("Robot Test " + Math.random());
-
-  private GenericEntry turnPInput, turnIInput, turnDInput;
-  private GenericEntry movePInput, moveIInput, moveDInput;
-
-  private GenericEntry armPInput, armIInput, armDInput;
-  private GenericEntry extenderPInput, extenderIInput, extenderDInput;
-
   private int tick = 0;
 
-  double armAngle;
-  double extenderPosition;
+  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
+  private final CANSparkMax extender = new CANSparkMax(RobotMap.EXTENDER, MotorType.kBrushless);
 
-  public Robot() {
-    super(Constants.PERIOD_MS / 1000);
-  }
+  private final RelativeEncoder armEncoder = arm.getEncoder();
+  private final RelativeEncoder extenderEncoder = extender.getEncoder();
 
+  private SparkMaxPIDController armPID;
+  private SparkMaxPIDController extenderPID;
+  private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.EXTENDER);
+  private int mode = 0;
+  private ArmSubsystem.ArmTargetChoice[] targetModes = {
+    ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL,
+    ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM,
+     ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE,
+     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM,
+     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE
+    };
   @Override
   public void robotInit() {
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    arm.restoreFactoryDefaults();
+    extender.restoreFactoryDefaults();
 
     compressor.disable();
 
-    if (RobotMap.USING_TESTBED) {
-      // Testbed
-      drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_LEFT_INVERTED, RobotMap.TEST_MOTOR_RIGHT,
-          RobotMap.TEST_MOTOR_RIGHT_INVERTED);
-    } else {
-      // Competition robot
-      drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_LEFT_INVERTED, RobotMap.MOTOR_RIGHT,
-          RobotMap.MOTOR_RIGHT_INVERTED);
-    }
-
-    arm.restoreFactoryDefaults();
-    arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
-
-    extender.setIdleMode(CANSparkMax.IdleMode.kBrake);
-    extender.setInverted(true);
-
-    armEncoder = arm.getEncoder();
-    armEncoder.setPosition(0);
-
-    extenderEncoder = extender.getEncoder();
-    extenderEncoder.setPosition(0);
-
+    extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_POSITION);
+    armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
     armPID = arm.getPIDController();
-    armAngle = armEncoder.getPosition();
-
     extenderPID = extender.getPIDController();
-    extenderPosition = extenderEncoder.getPosition();
 
-    armPID.setP(0.2);
-    armPID.setI(0);
-    armPID.setD(0.0001);
+    armPID.setP(0.1);
+    armPID.setI(0.0001);
+    armPID.setD(0.001);
     armPID.setOutputRange(-1, 1);
     armPID.setIZone(0);
     armPID.setFF(0);
 
-    // sets absolute encoder limits for arm
-    // armPID.setReference(0, CANSparkMax.ControlType.kPosition);
-
-    extenderPID.setP(0.2);
-    extenderPID.setI(0.0);
-    extenderPID.setD(0.0001);
+    extenderPID.setP(0.1);
+    extenderPID.setI(0);
+    extenderPID.setD(0);
     extenderPID.setOutputRange(-1, 1);
     extenderPID.setIZone(0);
     extenderPID.setFF(0);
-
-    extender.setSmartCurrentLimit(5);
-    arm.setSmartCurrentLimit(5);
-  
-
-    armPInput = tab.add("Arm P", armPID.getP()).getEntry();
-    armIInput = tab.add("Arm I", armPID.getI()).getEntry();
-    armDInput = tab.add("Arm D", armPID.getD()).getEntry();
-
-    extenderPInput = tab.add("Extender P", extenderPID.getP()).getEntry();
-    extenderIInput = tab.add("Extender I", extenderPID.getI()).getEntry();
-    extenderDInput = tab.add("Extender D", extenderPID.getD()).getEntry();
-
   }
 
   @Override
   public void robotPeriodic() {
     tick += 1;
-    armPID.setP(armPInput.getDouble(0));
-    armPID.setI(armIInput.getDouble(0));
-    armPID.setD(armDInput.getDouble(0));
-
-    extenderPID.setP(extenderPInput.getDouble(0));
-    extenderPID.setI(extenderIInput.getDouble(0));
-    extenderPID.setD(extenderDInput.getDouble(0));
   }
 
   @Override
   public void autonomousInit() {
+
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+
     Command moveForward = new MoveDistance(10, drive);
     Command moveBackward = new MoveDistance(-3, drive);
     Command balance = new Balance(drive);
@@ -205,70 +160,60 @@ public class Robot extends TimedRobot {
     drive.resetPositionOdometry();
 
     Command rotateAngles = new SequentialCommandGroup(
-        new TurnToAngle(90, drive),
-        new WaitCommand(1),
-        new TurnToAngle(180, drive),
-        new WaitCommand(1),
-        new TurnToAngle(270, drive),
-        new WaitCommand(1),
-        new TurnToAngle(360, drive));
+      new TurnToAngle(90, drive),
+      new WaitCommand(1),
+      new TurnToAngle(180, drive),
+      new WaitCommand(1),
+      new TurnToAngle(270, drive),
+      new WaitCommand(1),
+      new TurnToAngle(360, drive)
+    );
 
     Command followRectangle = new SequentialCommandGroup(
-        new TurnToAngle(-180, drive),
-        new MoveDistance(Units.inchesToMeters(80), drive),
+      new TurnToAngle(-180, drive),
+      new MoveDistance(Units.inchesToMeters(80), drive),
+      
+      new TurnToAngle(-90, drive),
+      new MoveDistance(Units.inchesToMeters(60), drive),
 
-        new TurnToAngle(-90, drive),
-        new MoveDistance(Units.inchesToMeters(60), drive),
+      new TurnToAngle(0, drive),
+      new MoveDistance(Units.inchesToMeters(80), drive),
 
-        new TurnToAngle(0, drive),
-        new MoveDistance(Units.inchesToMeters(80), drive),
+      new TurnToAngle(90, drive),
+      new MoveDistance(Units.inchesToMeters(60), drive),
 
-        new TurnToAngle(90, drive),
-        new MoveDistance(Units.inchesToMeters(60), drive),
-
-        // Doesn't converge? TODO: Figure out why
-        new TurnToAngle(180, drive));
+      // Doesn't converge? TODO: Figure out why
+      new TurnToAngle(180, drive)
+    );
 
     Command followRectangleOdom = new SequentialCommandGroup(
-        new MoveDistance(Units.inchesToMeters(20), drive),
+      new MoveDistance(Units.inchesToMeters(20), drive),
+      
+      new TurnToAngle(90, drive),
+      new MoveDistance(Units.inchesToMeters(10), drive),
 
-        new TurnToAngle(90, drive),
-        new MoveDistance(Units.inchesToMeters(10), drive),
+      new TurnToAngle(180, drive),
+      new MoveDistance(Units.inchesToMeters(20), drive),
 
-        new TurnToAngle(180, drive),
-        new MoveDistance(Units.inchesToMeters(20), drive),
+      new TurnToAngle(270, drive),
+      new MoveDistance(Units.inchesToMeters(10), drive),
 
-        new TurnToAngle(270, drive),
-        new MoveDistance(Units.inchesToMeters(10), drive),
-
-        new TurnToAngle(0, drive));
-
+      new TurnToAngle(0, drive)
+    );
+    
+    
     Command _followRectangleOld = new MoveDistance(Units.inchesToMeters(80), drive)
-        .andThen(new TurnToAngle(-90, drive))
-        .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
-        .andThen(new TurnToAngle(-180, drive))
-        .andThen(new MoveDistance(Units.inchesToMeters(80), drive))
-        .andThen(new TurnToAngle(-270, drive))
-        .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
-        .andThen(new TurnToAngle(0, drive));
+      .andThen(new TurnToAngle(-90, drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
+      .andThen(new TurnToAngle(-180, drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(80), drive))
+      .andThen(new TurnToAngle(-270, drive))
+      .andThen(new MoveDistance(Units.inchesToMeters(40), drive))
+      .andThen(new TurnToAngle(0, drive));
 
     System.out.println("Scheduling command");
-    // sequence.schedule();
 
-    // rotateAngles.schedule();
-
-    // new TurnToAngle(drive.getHeading() + 90, drive).schedule();
-    new MoveDistance(1, drive).schedule();
-
-    // followRectangleOdom.schedule();
-
-    // Command moveForward = new MoveDistance(10, drive);
-    // Command moveBackward = new MoveDistance(-3, drive);
-    // Command balance = new Balance(drive);
-
-    // moveForward
-    // .andThen(moveBackward)
-    // .andThen(balance);
+    new CenterPhotonVisionTarget(drive).schedule();
   }
 
   @Override
@@ -278,63 +223,82 @@ public class Robot extends TimedRobot {
 
     Pose2d poseOdom = drive.getPoseFromOdometry();
     Pose2d poseOdomAndVision = drive.getPoseWithVisionMeasurements();
-
-    // Every 40ms
-    // if (tick % 2 == 0) {
-    // System.out.println("ODOMETRY ONLY: Angle: " +
-    // poseOdom.getRotation().getDegrees() + " deg. X: " +
-    // Units.metersToInches(poseOdom.getX()) + ". Y: " +
-    // Units.metersToInches(poseOdom.getY()));
-    // System.out.println("ODOMETRY + VISION: Angle: " +
-    // poseOdomAndVision.getRotation().getDegrees() + " deg. X: " +
-    // Units.metersToInches(poseOdomAndVision.getX()) + ". Y: " +
-    // Units.metersToInches(poseOdomAndVision.getY()));
-    // }
   }
 
   @Override
   public void autonomousExit() {
+    arm.setIdleMode(CANSparkMax.IdleMode.kCoast); //TODO: VERY IMPORTANT DISABLE THIS FOR COMPETITION
+    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
   }
-
-  @Override
-  public void teleopInit() {
-  }
-
   @Override
   public void teleopPeriodic() {
-    double leftSpeed = -controller.getLeftY();
-    double rightSpeed = -controller.getRightY();
+ //EXTENDER //3.6 inches for every 5 rotations of the motr
+      if(controller.getLeftBumper())
+        armSubSys.changeArmPosition(5);
+      if(controller.getRightBumper())
+        armSubSys.changeArmPosition(-5);
 
-    leftSpeed = Math.copySign(Math.max(0, Math.abs(leftSpeed) - 0.05), leftSpeed);
-    rightSpeed = Math.copySign(Math.max(0, Math.abs(rightSpeed) - 0.05), rightSpeed);
+    if(controller.getRightTriggerAxis()>0){
+      armSubSys.changeExtenderPosition(-controller.getRightTriggerAxis());
+    }
+    if(controller.getLeftTriggerAxis()>0){
+      armSubSys.changeExtenderPosition(-controller.getLeftTriggerAxis());
+    }
+    System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
 
-    drive.left.set(leftSpeed);
-    drive.right.set(rightSpeed);
-    System.out.printf("Left: %.3f, right: %.3f\n", leftSpeed, rightSpeed);
+    final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
+    final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
+
+
+    System.out.println("Arm Encoder: " + armEncoder.getPosition());
+    System.out.println("target Mode: " + targetModes[mode]);
+    if(controller.getYButtonPressed()){ //control to position of Level Three Pole
+      armSubSys.setTargetMode(targetModes[0]);     
+    }
+
+    if (controller.getXButtonPressed())
+      extenderEncoder.setPosition(0);
+
+    if (controller.getBButtonPressed())
+      armEncoder.setPosition(0);
+    if (controller.getAButtonPressed()) {
+      System.out.println("Trigger pressed, turning to 180 deg");
+      new TurnToAngle(180, drive).schedule();
+    }
+
+    //System.out.println("Yaw: " + gyro.getYaw() + ", pitch: " + gyro.getPitch() + ", roll: " + gyro.getRoll());
+
+    // if (controller.getAButtonPressed()) {
+    //   solenoid.set(Value.kForward);
+    // } else if (controller.getAButtonReleased()) {
+    //   solenoid.set(Value.kReverse);
+    // }
+
+
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
+    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
+    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
 
     CommandScheduler.getInstance().run();
   }
+
 
   Pose2d poseAhead;
 
   @Override
   public void testInit() {
-    leftSolenoid.set(Value.kOff); // Off by default
-    rightSolenoid.set(Value.kOff);
-
-    drive.setIdleMode(IdleMode.kBrake);
-
-    extender.setIdleMode(IdleMode.kBrake);
-    arm.setIdleMode(CANSparkMax.IdleMode.kBrake);
-  }
-
-  @Override
-  public void testExit() {
     arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
     extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    armAngle = armEncoder.getPosition();
+    leftSolenoid.set(Value.kOff); // Off by default
+    rightSolenoid.set(Value.kOff);
   }
 
   boolean pistonForward = false;
@@ -344,188 +308,65 @@ public class Robot extends TimedRobot {
   double pressure = 0;
   boolean pistonForward2 = false;
 
-  boolean coneMode = true;
-
   @Override
   public void testPeriodic() {
-    System.out.printf(
-        "Extender target position: %.4f; extender position: %.4f; target arm position: %.4f; current arm angle: %.4f\n",
-        extenderPosition,
-        extenderEncoder.getPosition(),
-        armAngle,
-        armEncoder.getPosition());
-
-
-    extenderPosition += (controller.getRightTriggerAxis()
-        - controller.getLeftTriggerAxis()) * 0.1;
-
-    extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,
-        Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
-
-    // ARM
-    if (controller.getLeftBumper()) {
-      // Turn counterclockwise
-      armAngle += 0.3;
-    }
-
-    if (controller.getRightBumper()) {
-      // Turn clockwise
-      armAngle -= 0.3;
-    }
-
-    if (controller.getAButtonPressed()) {
-      if (coneMode) {
-        System.out.println("Moving arm and extender to low cone node");
-        extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS;
-        armAngle = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;
-      } else {
-        System.out.println("Moving arm and extender to low cube node");
-        extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
-        armAngle = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;
-      }
-    }
-
-    if (controller.getYButtonPressed()) {
-      if (coneMode) {
-        System.out.println("Moving arm and extender to high cone node");
-        extenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
-        armAngle = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;
-      } else {
-        System.out.println("Moving arm and extender to high cube node");
-        extenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
-        armAngle = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;
-      }
-    }
-
-    if (controller.getLeftBumperPressed()) {
-      // Left bumper selects cube nodes
-      coneMode = false;
-    }
-
-    if (controller.getRightBumperPressed()) {
-      // Right bumper selects cone nodes
-      coneMode = true;
-    }
-
-    armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
-    extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
-
-    System.out.printf(
-        "Extender target position: %.4f; extender position: %.4f; target arm position: %.4f; current arm angle: %.4f\n",
-        extenderPosition,
-        extenderEncoder.getPosition(),
-        armAngle,
-        armEncoder.getPosition());
-
-
-
-
+    
     // double joystickThrottle = joystick.getThrottle();
     // boolean joystickTrigger = joystick.getTrigger();
     // double pov = joystick.getPOV();
 
-    // System.out.println("throttle: " + joystickThrottle + "; trigger: " +
-    // joystickTrigger + "; pov: " + pov);
+    // System.out.println("throttle: " + joystickThrottle + "; trigger: " + joystickTrigger + "; pov: " + pov);
 
     // DRIVE
 
     // Controller forward is negative
-  //   double speed = Math.pow(-controller.getLeftY(), 3.0);
-  //   double turn = Math.pow(controller.getLeftX(), 3.0);
+    double speed = Math.pow(-controller.getRightY(), 3.0);
+    double turn = Math.pow(controller.getRightX(), 3.0);
 
-  //   // System.out.println("Joystick y: " + joystick.getY() + " ; joystick x: " +
-  //   // joystick.getX());
-  //   // double joystickY = Math.signum(joystick.getY()) * Math.max(0,
-  //   // Math.abs(joystick.getY()) - 0.1);
-  //   // double joystickX = Math.signum(joystick.getX()) * Math.max(0,
-  //   // Math.abs(joystick.getX()) - 0.1);
-  //   // speed = driveSpeedLimiter.calculate(-joystickY);
-  //   // turn = turnSpeedLimiter.calculate(joystickX);
-  //   // System.out.println("Speed: " + speed + "; turn: " + turn);
+    drive.differentialDrive(speed, -turn);
 
-  //   drive.differentialDrive(speed, turn);
+    // EXTENDER
+    if(controller.getRightTriggerAxis()>0){
+      armSubSys.changeExtenderPosition(-controller.getRightTriggerAxis());
+    }
+    if(controller.getLeftTriggerAxis()>0){
+      armSubSys.changeExtenderPosition(-controller.getLeftTriggerAxis());
+    }
+    System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
 
-  //   // EXTENDER
+    // COMPRESSOR
+    if (compressorEnabled) {
+      // Calculate pressure from analog input
+      // (from REV analog sensor datasheet)
+      double vOut = pressureSensor.getAverageVoltage();
+      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
 
-  //   // TODO: Change to PID
-    // extenderPosition += (controller.getRightTriggerAxis()
-    //     - controller.getLeftTriggerAxis()) * 0.1;
+      pressureController.calculate(pressure, Constants.PneumaticConstants.TARGET_PRESSURE);
+      if (pressureController.atSetpoint()) {
+        compressor.enableDigital();
+      } else {
+        compressor.disable();
+      }
+    } else {
+      compressor.disable();
+    }
 
-    // extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,
-    //     Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
+    if (controller.getAButtonPressed()) {
+      compressorEnabled = !compressorEnabled;
+    }
 
-  //   extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+    // PISTON
+    if (controller.getYButtonPressed()) {
+      pistonForward = !pistonForward;
+      System.out.println("Enabling solenoid: " + pistonForward);
+      if (pistonForward) {
+        leftSolenoid.set(Value.kReverse);
+        rightSolenoid.set(Value.kForward);
+      } else {
+        leftSolenoid.set(Value.kForward);
+        rightSolenoid.set(Value.kReverse);
+      }
+    }
 
-  //   // ARM
-  //   if (controller.getLeftBumper()) {
-  //     // Turn counterclockwise
-  //     armAngle += 0.3;
-  //   }
-
-  //   if (controller.getRightBumper()) {
-  //     // Turn clockwise
-  //     armAngle -= 0.3;
-  //   }
-
-  //   System.out.printf(
-  //       "Extender target position: %.4f; extender position: %.4f; target arm position: %.4f; current arm angle: %.4f\n",
-  //       extenderPosition,
-  //       extenderEncoder.getPosition(),
-  //       armAngle,
-  //       armEncoder.getPosition());
-
-  //   if (controller.getXButtonPressed()) {
-  //     // Align arm with level two game node height
-
-  //     // double armLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
-  //     // + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
-  //     // double angle = Math
-  //     // .atan((Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT -
-  //     // Constants.ArmConstants.ARM_HEIGHT) / armLength);
-  //     // System.out.println("armLength: " + armLength);
-  //     // System.out.println("arm angle: " + angle);
-  //     // armAngle = Constants.ArmConstants.ARM_GEARING * angle;
-  //   }
-
-  //   armPID.setReference(armAngle, CANSparkMax.ControlType.kPosition);
-
-  //   // COMPRESSOR
-  //   if (compressorEnabled) {
-  //     // Calculate pressure from analog input
-  //     // (from REV analog sensor datasheet)
-  //     double vOut = pressureSensor.getAverageVoltage();
-  //     double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
-
-  //     pressureController.calculate(pressure, 60);
-
-  //     if (pressure <= 120)
-
-  //       System.out.println("Pressure estimate: " + pressure + "; raw: " + vOut);
-
-  //     if (pressureController.atSetpoint()) {
-  //       compressor.enableDigital();
-  //     } else {
-  //       compressor.disable();
-  //     }
-  //   } else {
-  //     compressor.disable();
-  //   }
-
-  //   if (controller.getAButtonPressed()) {
-  //     compressorEnabled = !compressorEnabled;
-  //   }
-
-  //   // PISTON
-  //   if (controller.getYButtonPressed()) {
-  //     pistonForward = !pistonForward;
-  //     System.out.println("Enabling solenoid: " + pistonForward);
-  //     if (pistonForward) {
-  //       leftSolenoid.set(Value.kReverse);
-  //       rightSolenoid.set(Value.kForward);
-  //     } else {
-  //       leftSolenoid.set(Value.kForward);
-  //       rightSolenoid.set(Value.kReverse);
-  //     }
-  //   }
   }
 }
