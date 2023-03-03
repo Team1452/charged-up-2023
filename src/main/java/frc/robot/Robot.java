@@ -87,22 +87,14 @@ public class Robot extends TimedRobot {
   private final AnalogInput pressureSensor = new AnalogInput(0);
 
 
-  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, RobotMap.TEST_MOTOR_RIGHT);
+  private final DriveSubsystem drive = new DriveSubsystem(RobotMap.TEST_MOTOR_LEFT, false, RobotMap.TEST_MOTOR_RIGHT, true);
 
 
   private final Joystick joystick = new Joystick(0);
 
   private int tick = 0;
 
-  private final CANSparkMax arm = new CANSparkMax(RobotMap.MOTOR_ARM, MotorType.kBrushless);
-  private final CANSparkMax extender = new CANSparkMax(RobotMap.EXTENDER, MotorType.kBrushless);
-
-  private final RelativeEncoder armEncoder = arm.getEncoder();
-  private final RelativeEncoder extenderEncoder = extender.getEncoder();
-
-  private SparkMaxPIDController armPID;
-  private SparkMaxPIDController extenderPID;
-  private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.EXTENDER);
+  private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.MOTOR_EXTEND);
   private int mode = 0;
   private ArmSubsystem.ArmTargetChoice[] targetModes = {
     ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL,
@@ -113,31 +105,9 @@ public class Robot extends TimedRobot {
     };
   @Override
   public void robotInit() {
-    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    arm.restoreFactoryDefaults();
-    extender.restoreFactoryDefaults();
-
     compressor.disable();
 
-    extenderEncoder.setPosition(Constants.ExtenderConstants.MIN_EXTENDER_POSITION);
-    armEncoder.setPosition(Constants.ArmConstants.MIN_ROTATION_ROT);
-    armPID = arm.getPIDController();
-    extenderPID = extender.getPIDController();
 
-    armPID.setP(0.1);
-    armPID.setI(0.0001);
-    armPID.setD(0.001);
-    armPID.setOutputRange(-1, 1);
-    armPID.setIZone(0);
-    armPID.setFF(0);
-
-    extenderPID.setP(0.1);
-    extenderPID.setI(0);
-    extenderPID.setD(0);
-    extenderPID.setOutputRange(-1, 1);
-    extenderPID.setIZone(0);
-    extenderPID.setFF(0);
   }
 
   @Override
@@ -147,9 +117,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-
-    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    armSubSys.setIdleMode(CANSparkMax.IdleMode.kCoast);
 
     Command moveForward = new MoveDistance(10, drive);
     Command moveBackward = new MoveDistance(-3, drive);
@@ -227,8 +195,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousExit() {
-    arm.setIdleMode(CANSparkMax.IdleMode.kCoast); //TODO: VERY IMPORTANT DISABLE THIS FOR COMPETITION
-    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    armSubSys.setIdleMode(CANSparkMax.IdleMode.kBrake);
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
   }
@@ -236,33 +203,21 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
  //EXTENDER //3.6 inches for every 5 rotations of the motr
       if(controller.getLeftBumper())
-        armSubSys.changeArmPosition(5);
+        armSubSys.changeArmPosition(0.5);
       if(controller.getRightBumper())
-        armSubSys.changeArmPosition(-5);
+        armSubSys.changeArmPosition(-0.5);
 
-    if(controller.getRightTriggerAxis()>0){
-      armSubSys.changeExtenderPosition(-controller.getRightTriggerAxis());
+    if(controller.getRightTriggerAxis()>0.3){
+      armSubSys.changeExtenderPosition(controller.getRightTriggerAxis());
     }
-    if(controller.getLeftTriggerAxis()>0){
+    if(controller.getLeftTriggerAxis()>0.3){
       armSubSys.changeExtenderPosition(-controller.getLeftTriggerAxis());
     }
     System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
 
-    final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
-    final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
-
-
-    System.out.println("Arm Encoder: " + armEncoder.getPosition());
+    System.out.println("Arm Encoder: " + armSubSys.getArmEncoder().getPosition());
     System.out.println("target Mode: " + targetModes[mode]);
-    if(controller.getYButtonPressed()){ //control to position of Level Three Pole
-      armSubSys.setTargetMode(targetModes[0]);     
-    }
 
-    if (controller.getXButtonPressed())
-      extenderEncoder.setPosition(0);
-
-    if (controller.getBButtonPressed())
-      armEncoder.setPosition(0);
     if (controller.getAButtonPressed()) {
       System.out.println("Trigger pressed, turning to 180 deg");
       new TurnToAngle(180, drive).schedule();
@@ -276,17 +231,6 @@ public class Robot extends TimedRobot {
     //   solenoid.set(Value.kReverse);
     // }
 
-
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
-    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
-    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-
     CommandScheduler.getInstance().run();
   }
 
@@ -295,8 +239,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
-    arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
+    armSubSys.setIdleMode(CANSparkMax.IdleMode.kCoast);
     leftSolenoid.set(Value.kOff); // Off by default
     rightSolenoid.set(Value.kOff);
   }
@@ -367,6 +310,27 @@ public class Robot extends TimedRobot {
         rightSolenoid.set(Value.kReverse);
       }
     }
+
+/*
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
+    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
+    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
+    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
+     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
+    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
+    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
+    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
+ */
 
   }
 }

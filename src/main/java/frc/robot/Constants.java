@@ -74,8 +74,8 @@ public class Constants {
         static final double MAX_EXTENDER_ROTATIONS = 33.55;
         static final double MIN_EXTENDER_ROTATIONS = 0;
 
-        static final double MIN_ARM_LENGTH = Units.feetToMeters(20.5);
-        static final double MAX_ARM_LENGTH = Units.feetToMeters(51);
+        static final double MIN_ARM_LENGTH = Units.inchesToMeters(20.5);
+        static final double MAX_ARM_LENGTH = Units.inchesToMeters(60);
         static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_ROTATIONS;
 
         static final double MIN_ARM_EXTENSION = 0;
@@ -85,12 +85,16 @@ public class Constants {
     static class ArmConstants {
         static final double ARM_GEARING = (65/12)*50;
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
-        static final double MIN_ROTATION = Units.degreesToRadians(360-55);
-        static final double MAX_ROTATION = Units.degreesToRadians(180+42);
+        static final double MIN_ROTATION_RAD = Units.degreesToRadians(360-55);
+        static final double MAX_ROTATION_RAD = Units.degreesToRadians(180+42);
+        static final double MAX_ROTATION_ROT = 60;
+        static final double MIN_ROTATION_ROT = 0;
+        static final double ARM_STRESS_CURRENT = 0;//TODO
     }
 
     static class PneumaticConstants { 
-        static final double MAX_PRESSURE = 60; // PSI
+        static final double MAX_PRESSURE = 120; // PSI
+        static final double TARGET_PRESSURE = 110; // PSI
         static final double ANALOG_VCC = 5; // VCC for analog input
     }
 
@@ -113,11 +117,23 @@ public class Constants {
         static final double LEVEL_THREE_POLE_HEIGHT = 1.17;  //from top of pole
         static final double LEVEL_THREE_PLATFORM_HEIGHT = 0.9;//from bottom of platform
         static final double FLOOR_HEIGHT = 0; //hot take?
+
+
+    }
+    static class ArmExPos{
+        //All arm angles here are to be in rotations
+        static final double LEVEL_TWO_POLE_ARM_LENGTH = 0; //TODO 
+        static final double LEVEL_THREE_POLE_ARM_LENGTH = 0; //TODO
+        static final double LEVEL_TWO_PLATFORM_ARM_LENGTH = 0; //TODO
+        static final double LEVEL_THREE_PLATFORM_ARM_LENGTH = 0; //TODO
+
+        static final double LEVEL_TWO_POLE_ARM_ANGLE = 0; //TODO
+        static final double LEVEL_THREE_POLE_ARM_ANGLE = 0; //TODO
+        static final double LEVEL_TWO_PLATFORM_ARM_ANGLE = 0; //TODO
+        static final double LEVEL_THREE_PLATFORM_ARM_ANGLE = 0; //TODO
     }
 
     static class VisionConstants {
-        static final double ARM_BASE_LENGTH_INCHES = 20.5;
-        static final double ARM_EXTENSION_LENGTH_INCHES =  0;//TODO
         static final Transform3d robotToCam =
                 new Transform3d(
                         new Translation3d(Units.inchesToMeters(16 /* camera is 16 inches ahead of center */), 0.0, 0.5),
