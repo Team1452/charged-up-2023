@@ -85,16 +85,21 @@ public class Constants {
     static class ArmConstants {
         static final double ARM_GEARING = (65/12)*50;
         static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
-        static final double MIN_ROTATION_RAD = Units.degreesToRadians(360-55);
-        static final double MAX_ROTATION_RAD = Units.degreesToRadians(180+42);
-        static final double MAX_ROTATION_ROT = 60;
+        // static final double MIN_ROTATION_RAD = Units.degreesToRadians(360-61);
+        // static final double MAX_ROTATION_RAD = Units.degreesToRadians(360-61-35-90);
+        // static final double MIN_ROTATION_RAD = Units.degreesToRadians(299);
+        // static final double MAX_ROTATION_RAD = Units.degreesToRadians(174);
+        static final double MIN_ROTATION_RAD = 0;
+        static final double RANGE_RAD = Units.degreesToRadians(26 + 35 + 90);
+        static final double MAX_ROTATION_RAD = MIN_ROTATION_RAD + RANGE_RAD;
+        static final double START_ANGLE = Units.degreesToRadians(61);
+        static final double MAX_ROTATION_ROT = 113.4;
         static final double MIN_ROTATION_ROT = 0;
         static final double ARM_STRESS_CURRENT = 0;//TODO
     }
 
     static class PneumaticConstants { 
-        static final double MAX_PRESSURE = 120; // PSI
-        static final double TARGET_PRESSURE = 110; // PSI
+        static final double MAX_PRESSURE = 200; // PSI
         static final double ANALOG_VCC = 5; // VCC for analog input
     }
 
