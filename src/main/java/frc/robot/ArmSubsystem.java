@@ -32,7 +32,8 @@ public class ArmSubsystem {
     private final double armScaleConstant = (Constants.ArmConstants.MAX_ROTATION_ROT-Constants.ArmConstants.MIN_ROTATION_ROT);
     private final double armScaleRad = (Constants.ArmConstants.MAX_ROTATION_RAD-Constants.ArmConstants.MIN_ROTATION_RAD)/armScaleConstant;
     private double currentExtenderLength;
-    private double armHeight;
+    private double armY;
+    private double armX;
     final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS - Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS); 
 
     public ArmSubsystem(int armID, int extenderID){
@@ -80,7 +81,6 @@ public class ArmSubsystem {
     }
 
     public void changeArmPosition(double percentChange){
-        armHeight = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
 
         if(targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             armPosition += armScaleConstant*percentChange*0.01;
@@ -117,6 +117,9 @@ public class ArmSubsystem {
             break;
         }
 
+        armY = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
+        armX = Math.cos(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
+        
         //if we're at the arm position then we switch back to manual control
         if(Math.abs(armEncoder.getPosition()-armPosition)<0.1 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1 ){
             out = ArmTargetChoice.MANUAL_CONTROL;
@@ -133,9 +136,11 @@ public class ArmSubsystem {
         return out;
     }
     public double getArmHeight(){
-        return armHeight;
+        return armY;
     }
-
+    public double getArmDistance(){
+        return armX;
+    }
     public double getExtenderPosition(){
         return extenderPosition;
     }

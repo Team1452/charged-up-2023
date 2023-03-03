@@ -211,27 +211,29 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     double joystickThrottle = joystick.getThrottle()*0.01; //TODO: Not sure if this value is on the bound [0, 100] or [0, 1]
     boolean joystickTrigger = joystick.getTrigger();
-    double speed = joystick.getY();
-    double turn = joystick.getX();
-    drive.differentialDrive(speed*joystickThrottle, turn);
+    double speed = Math.pow(-controller.getRightY(), 3.0);
+    double turn = Math.pow(controller.getRightX(), 3.0);
+
+    drive.differentialDrive(speed, -turn);
+
     for(int i = 0; i < joystick.getButtonCount(); i++){
       System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
     }
-    if(joystick.getRawButtonPressed(7)){
-      target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
-    }
-    if(joystick.getRawButtonPressed(9)){
-      target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
-    }
-    if(joystick.getRawButtonPressed(8)){
-      target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
-    }
-    if(joystick.getRawButtonPressed(11)){
-      target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
-    }
-    if(joystick.getRawButtonPressed(12)){
-      target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
-    }
+    //if(joystick.getRawButtonPressed(7)){
+    //  target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
+    //}
+    //if(joystick.getRawButtonPressed(9)){
+    //  target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
+    //}
+    //if(joystick.getRawButtonPressed(8)){
+    //  target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
+    //}
+    //if(joystick.getRawButtonPressed(11)){
+    //  target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+    //}
+    //if(joystick.getRawButtonPressed(12)){
+    //  target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
+    //}
 
  //EXTENDER //3.6 inches for every 5 rotations of the motr
     if(controller.getLeftBumper())
@@ -281,7 +283,7 @@ public class Robot extends TimedRobot {
     }
 
     CommandScheduler.getInstance().run();
-    target = armSubsys.update();
+    target = armSubSys.update();
   }
 
 
