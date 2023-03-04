@@ -21,7 +21,8 @@ public class Balance extends CommandBase {
 
     public Balance(DriveSubsystem drive) {
         this.controller = new PIDController(DriveConstants.kBalanceP, DriveConstants.kBalanceI, DriveConstants.kBalanceD);
-        this.controller.setTolerance(DriveConstants.kBalanceToleranceDegrees);
+        // this.controller.setTolerance(DriveConstants.kBalanceToleranceDegrees);
+        this.controller.setTolerance(DriveConstants.kBalanceToleranceDegrees, 0.05);
 
         this.drive = drive;
         // super(
@@ -48,9 +49,13 @@ public class Balance extends CommandBase {
         //     ticksSinceLastUpdate = 0;
         // }
 
+        controller.setP(Constants.DriveConstants.kBalanceP);
+        controller.setI(Constants.DriveConstants.kBalanceI);
+        controller.setD(Constants.DriveConstants.kBalanceD);
+
         double pitch = drive.getPitch();
         double output = controller.calculate(pitch, 0);
-        System.out.println("Pitch: " + pitch + "; output: " + output + "; tolerance: " + controller.getPositionTolerance() + "; at setpoint: " + Utils.atSetpoint(controller));
+        System.out.println("Pitch: " + pitch + "; roll: " + drive.getGyro().getRoll() + "; yaw: " + drive.getGyro().getYaw() + "; output: " + output + "; tolerance: " + controller.getPositionTolerance() + "; at setpoint: " + Utils.atSetpoint(controller));
         
         if (Utils.atSetpoint(controller))
             drive.differentialDrive(0, 0);

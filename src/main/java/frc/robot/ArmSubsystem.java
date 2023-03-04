@@ -40,10 +40,15 @@ public class ArmSubsystem {
     private double armX;
     final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS - Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS); 
 
+    private double getArmAngleRadians() {
+        return armPosition/(Constants.ArmConstants.MAX_ROTATION_ROT - Constants.ArmConstants.MIN_ROTATION_ROT) * Constants.ArmConstants.RANGE_RAD + Constants.ArmConstants.START_ANGLE;
+    }
+
     public ArmSubsystem(int armID, int extenderID){
         arm = new CANSparkMax(armID, MotorType.kBrushless);
         extender = new CANSparkMax(extenderID, MotorType.kBrushless);
-
+        arm.restoreFactoryDefaults();
+        extender.restoreFactoryDefaults();
         arm.setIdleMode(CANSparkMax.IdleMode.kCoast);
         extender.setIdleMode(CANSparkMax.IdleMode.kCoast);
         arm.restoreFactoryDefaults();
@@ -90,10 +95,9 @@ public class ArmSubsystem {
     }
 
     private boolean isInLegalPosition() {
-        double armAngle = armScaleRad * armPosition - Constants.ArmConstants.START_ANGLE;
-        boolean isLegal = (Math.cos(armAngle) * currentExtenderLength) + Units.inchesToMeters(32/2) <= Units.inchesToMeters(48 - 2);
+        double armAngle = getArmAngleRadians();
+        boolean isLegal = (Math.cos(armAngle) * currentExtenderLength) + Units.inchesToMeters(32/2) <= Units.inchesToMeters(48 - 6);
         if (!isLegal) System.out.println("ArmSubsystem: Position is illegal");
-        System.out.println("Arm Angle is: " + Units.radiansToDegrees(armAngle) + " Arm X is: " + armX);
         return isLegal;
     }
 
@@ -107,14 +111,11 @@ public class ArmSubsystem {
     public void changeExtenderPosition(double percentChange){
         updateSavedPositions();
 
-        currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
-        + armEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
 
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             extenderPosition += extenderScaleConstant*percentChange*0.01;
         }
 
-        if (!isInLegalPosition()) restoreOldPositions();
     }
 
     public void changeArmPosition(double percentChange){
@@ -124,7 +125,6 @@ public class ArmSubsystem {
             armPosition += armScaleConstant*percentChange*0.01;
         }
 
-        if (!isInLegalPosition()) restoreOldPositions();
     }
 
     public void setIdleMode(CANSparkMax.IdleMode mode){
@@ -135,6 +135,10 @@ public class ArmSubsystem {
         targetChoice = t;
     }
     public ArmTargetChoice update(){
+
+        currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
+        + extenderEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
+
         ArmTargetChoice out = ArmTargetChoice.MANUAL_CONTROL;
         switch(targetChoice){
             case LEVEL_TWO_POLE:
@@ -163,19 +167,18 @@ public class ArmSubsystem {
 
         armY = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         armX = Math.cos(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
-        
         //if we're at the arm position then we switch back to manual control
         if(Math.abs(armEncoder.getPosition()-armPosition)<0.1 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1 ){
             out = ArmTargetChoice.MANUAL_CONTROL;
         }
         armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
-        Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
+            Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
         extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,
-        Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS));
-        if(Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1)
-            extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+            Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS));
+        if(targetChoice == ArmTargetChoice.MANUAL_CONTROL || Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1)
+            extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
 
         return out;
     }

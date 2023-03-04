@@ -10,7 +10,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,6 +46,7 @@ import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
@@ -110,13 +114,40 @@ public class Robot extends TimedRobot {
     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE
   };
 
+  private ShuffleboardTab tab = Shuffleboard.getTab(String.format("Charged Up %.4f", Math.random()));
+
+  private GenericEntry kBalanceP, kBalanceI, kBalanceD;
+
+  private Balance balanceCommand;
+
+  private File balancingPointsLog;
+  private FileWriter balancingPointsLogWriter;
+
   @Override
   public void robotInit() {
+    try {
+      LocalTime time = LocalTime.now();
+      balancingPointsLog = new File(String.format("/home/lvuser/custom/point_%d:%d:%d_%s.csv", (time.getHour() + 1) % 12, time.getMinute(), time.getSecond(), time.getHour() > 11 ? "PM" : "AM"));
+      balancingPointsLog.createNewFile();
+      balancingPointsLogWriter = new FileWriter(balancingPointsLog);
+      balancingPointsLogWriter.write("Pitch,Speed,Turn\n");
+      balancingPointsLogWriter.flush();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    balanceCommand = new Balance(drive);
+    kBalanceP = tab.add("kBalanceP", Constants.DriveConstants.kBalanceP).getEntry();
+    kBalanceI = tab.add("kBalanceI", Constants.DriveConstants.kBalanceI).getEntry();
+    kBalanceD = tab.add("kBalanceD", Constants.DriveConstants.kBalanceD).getEntry();
     compressor.disable();
   }
 
   @Override
   public void robotPeriodic() {
+    Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
+    Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
+    Constants.DriveConstants.kBalanceD = kBalanceD.getDouble(0);
     tick += 1;
   }
 
@@ -205,8 +236,11 @@ public class Robot extends TimedRobot {
     drive.setIdleMode(IdleMode.kCoast);
   }
 
+  MjpegServer driverServer;
+
   @Override
   public void teleopInit() {
+    drive.setIdleMode(IdleMode.kBrake);
     armSubSys.reset();
   }
 
@@ -225,35 +259,58 @@ public class Robot extends TimedRobot {
 
   boolean lastAButtonStatus = false;
 
+  boolean loggingPoints = false;
+
   @Override
   public void teleopPeriodic() {
-    UsbCamera driverCam = new UsbCamera("Driver Cam", 0);
-    MjpegServer driServer = new MjpegServer("Driver Server", 1181);
-    driServer.setSource(driverCam);
-    ShuffleboardTab tab = Shuffleboard.getTab("test tab");
-    tab.add(driverCam);
     double joystickThrottle = MathUtil.clamp(1 - joystick.getThrottle()/100, 0, 1); //TODO: Not sure if this value is on the bound [0, 100] or [0, 1]
-    boolean joystickTrigger = joystick.getTrigger();
-    System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition());
-    double speed = Math.pow(-joystick.getY(), 3.0);
-    double turn = Math.pow(joystick.getX(), 3.0);
+    boolean joystickTrigger = joystick.getTrigger();;
+    System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition() + "joystick y: " + joystick.getY());
     
-    speed = Math.copySign(Math.max(0, Math.abs(speed) - 0.05), speed);
-    turn = Math.copySign(Math.max(0, Math.abs(turn) - 0.05), turn);
+    double speed = -joystick.getY();
+    double turn = joystick.getX();
 
-    drive.differentialDrive(speed, -turn);
+    // double speed = Math.pow(-joystick.getY(), 3.0);
+    // double turn = Math.pow(joystick.getTwist(), 3.0);
+    
+    speed = Math.copySign(Math.max(0, Math.abs(Math.pow(speed, 3.0)) - 0.05), speed);
+    turn = Math.copySign(Math.max(0, Math.abs(Math.pow(turn, 3.0)) - 0.05), turn);
+
+    System.out.println("Speed: " + speed + "; turn: " + turn);
+    
+    drive.differentialDrive(speed, turn);
 
     // for (int i = 1; i < joystick.getButtonCount(); i++) {
     //   System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
     // }
 
+    if (loggingPoints) {
+      System.out.println("Logged point");
+      try {
+        balancingPointsLogWriter.write(drive.getPitch() + "," + speed + "," + turn + "\n");
+        balancingPointsLogWriter.flush();
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+
+    if (controller.getXButtonPressed()) {
+      loggingPoints = !loggingPoints;
+    }
+
     // Thumb button on top of joystick
     if (joystick.getRawButtonPressed(2)) target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
-
     if (joystick.getRawButtonPressed(10)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
     if (joystick.getRawButtonPressed(12)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
     if (joystick.getRawButtonPressed(9)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
     if (joystick.getRawButtonPressed(11)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+    if(controller.getBButtonPressed()) {
+      if (balanceCommand.isScheduled())
+        balanceCommand.cancel();
+      else
+        balanceCommand.schedule();
+    }
 
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
     if(controller.getLeftBumper())
@@ -265,14 +322,13 @@ public class Robot extends TimedRobot {
     // System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
     // System.out.println("Arm Encoder: " + armSubSys.getArmEncoder().getPosition());
     // System.out.println("Target Arm Position: " + target);
-
     if (compressorEnabled) {
       // Calculate pressure from analog input
       // (from REV analog sensor datasheet)
       double vOut = pressureSensor.getAverageVoltage();
-      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
+      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 15; // Should be 25 but 15 works?
 
-      System.out.print("Compressor enabled; vOut: " + vOut + "; estimated pressure: " + pressure);
+      System.out.print("Compressor enabled; voltage: " + compressor.getAnalogVoltage() + "; estimated pressure: " + pressure);
 
       if (pressure < Constants.PneumaticConstants.MAX_PRESSURE) {
         System.out.print("; COMPRESSOR IS ON\n");
@@ -286,7 +342,7 @@ public class Robot extends TimedRobot {
     }
 
     // if (controller.getRawButtonPressed(7)) {
-    if (!lastAButtonStatus && controller.getAButton()) {
+    if (!lastAButtonStatus && controller.getStartButtonPressed()) {
       compressorEnabled = !compressorEnabled;
       if (compressorEnabled) {
         System.out.print("COMPRESSOR IS NOW ON\n");
@@ -295,19 +351,18 @@ public class Robot extends TimedRobot {
       }
     }
 
-    lastAButtonStatus = controller.getAButton();
+    lastAButtonStatus = controller.getStartButtonPressed();
 
     // PISTON
-    if (controller.getYButtonPressed()) {
-      pistonForward = !pistonForward;
-      System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward) {
+    if (controller.getAButtonPressed()) {
         leftSolenoid.set(Value.kReverse);
         rightSolenoid.set(Value.kForward);
-      } else {
+      }
+
+    if(controller.getBButtonPressed()){
         leftSolenoid.set(Value.kForward);
         rightSolenoid.set(Value.kReverse);
-      }
+    }
     }
 
     CommandScheduler.getInstance().run();

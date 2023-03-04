@@ -27,10 +27,10 @@ public class Constants {
         public static double kTurnD = 0.001;
         public static final double kTurnAngleToleranceDegrees = 0.1;
 
-        public static final double kBalanceP = 0.1;
-        public static final double kBalanceI = 0;
-        public static final double kBalanceD = 0;
-        public static final double kBalanceToleranceDegrees = 1;
+        public static double kBalanceP = 0.018;
+        public static double kBalanceI = 0.001;
+        public static double kBalanceD = 0;
+        public static final double kBalanceToleranceDegrees = 1.5;
     }
 
     static class ScoringConstants {
@@ -76,7 +76,7 @@ public class Constants {
 
         static final double MIN_ARM_LENGTH = Units.inchesToMeters(20.5);
         static final double MAX_ARM_LENGTH = Units.inchesToMeters(60);
-        static final double METERS_PER_ROTATION = MAX_ARM_LENGTH / MAX_EXTENDER_ROTATIONS;
+        static final double METERS_PER_ROTATION = Units.inchesToMeters(3.6);
 
         static final double MIN_ARM_EXTENSION = 0;
         static final double MAX_ARM_EXTENSION = MAX_ARM_LENGTH - MIN_ARM_LENGTH;
