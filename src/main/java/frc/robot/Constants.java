@@ -9,12 +9,17 @@ public class Constants {
     public static final double PERIOD_MS = 20;    
 
     public static class DriveConstants {
+        public static final double kMaxVoltage = 0.35;
         public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
         public static final double kTrackWidth = 0.381 * 2; // meters
         public static final double kWheelRadius = Units.inchesToMeters(3);
         public static final double kGearRatio = 1/6;
         public static final double kDistancePerPulse = kGearRatio * 2 * Math.PI * kWheelRadius;
+
+        public static double kVelocityP = 0.001;
+        public static double kVelocityI = 0;
+        public static double kVelocityD = 0;
 
         public static double kMoveP = 0.3;
         public static double kMoveI = 0.01;

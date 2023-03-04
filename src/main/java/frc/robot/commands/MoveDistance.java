@@ -20,7 +20,7 @@ public class MoveDistance extends PIDCommand {
                 System.out.println("MoveDistance: position is " 
                     + Units.metersToInches(drive.getPosition()) 
                     + " inches, target is " + Units.metersToInches(distanceMeters));
-                drive.differentialDrive(output, 0);
+                drive.differentialDriveVoltage(output, 0);
             },
             drive);
         
@@ -39,7 +39,7 @@ public class MoveDistance extends PIDCommand {
 
     @Override
     public void end(boolean interrupted) {
-        drive.differentialDrive(0, 0);
+        drive.differentialDriveVoltage(0, 0);
     }
 
     @Override

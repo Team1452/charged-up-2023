@@ -16,7 +16,7 @@ public class TurnToAngle extends PIDCommand {
             targetAngleDegrees,
             output -> {
                 System.out.println("Current angle: " + drive.getGyro().getYaw() + " deg; target angle is " + targetAngleDegrees + " deg; turn is " + output);
-                drive.differentialDrive(0, output);
+                drive.differentialDriveVoltage(0, output);
             },
             drive);
 
@@ -40,7 +40,7 @@ public class TurnToAngle extends PIDCommand {
             + Math.abs(m_setpoint.getAsDouble() 
                 - m_measurement.getAsDouble()));
     
-        drive.differentialDrive(0, 0);
+        drive.differentialDriveVoltage(0, 0);
     }
 
     @Override

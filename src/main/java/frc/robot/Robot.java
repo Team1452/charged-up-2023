@@ -114,9 +114,10 @@ public class Robot extends TimedRobot {
     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE
   };
 
-  private ShuffleboardTab tab = Shuffleboard.getTab(String.format("Charged Up %.4f", Math.random()));
+  private ShuffleboardTab tab = Shuffleboard.getTab(String.format("Pt. H %.4f", Math.random()));
 
   private GenericEntry kBalanceP, kBalanceI, kBalanceD;
+  private GenericEntry kMaxSpeed, kMaxVoltage;
 
   private Balance balanceCommand;
 
@@ -140,6 +141,8 @@ public class Robot extends TimedRobot {
     kBalanceP = tab.add("kBalanceP", Constants.DriveConstants.kBalanceP).getEntry();
     kBalanceI = tab.add("kBalanceI", Constants.DriveConstants.kBalanceI).getEntry();
     kBalanceD = tab.add("kBalanceD", Constants.DriveConstants.kBalanceD).getEntry();
+    kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
+    kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
     compressor.disable();
   }
 
@@ -148,6 +151,8 @@ public class Robot extends TimedRobot {
     Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
     Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
     Constants.DriveConstants.kBalanceD = kBalanceD.getDouble(0);
+    drive.setMaxVoltage(kMaxVoltage.getDouble(0));
+    drive.setMaxSpeed(kMaxSpeed.getDouble(0));
     tick += 1;
   }
 
@@ -284,19 +289,14 @@ public class Robot extends TimedRobot {
     //   System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
     // }
 
-    if (loggingPoints) {
-      System.out.println("Logged point");
-      try {
-        balancingPointsLogWriter.write(drive.getPitch() + "," + speed + "," + turn + "\n");
-        balancingPointsLogWriter.flush();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-    }
-
     if (controller.getXButtonPressed()) {
-      loggingPoints = !loggingPoints;
+      if (drive.isUsingVelocity()) {
+        drive.disableVelocityControl();
+        System.out.println("Robot: Using voltage control");
+      } else {
+        drive.enableVelocityControl();
+        System.out.println("Robot: Using velocity control");
+      }
     }
 
     // Thumb button on top of joystick
