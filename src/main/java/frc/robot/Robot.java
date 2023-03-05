@@ -74,8 +74,6 @@ import kotlin.UByteArrayKt;
 import frc.robot.commands.CenterPhotonVisionTarget;
 
 public class Robot extends TimedRobot {
-  private final XboxController controller = new XboxController(0);
-
   private final DoubleSolenoid rightSolenoid = new DoubleSolenoid(
       PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_1[0], RobotMap.SOLENOID_1[1]);
   private final DoubleSolenoid leftSolenoid = new DoubleSolenoid(
@@ -98,8 +96,8 @@ public class Robot extends TimedRobot {
 
   private final DriveSubsystem drive = new DriveSubsystem(RobotMap.MOTOR_LEFT, RobotMap.MOTOR_LEFT_INVERTED, RobotMap.MOTOR_RIGHT, RobotMap.MOTOR_RIGHT_INVERTED);
 
-
   // Logitech joystick, make sure that Xbox is 0 and Joystick is 1
+  private final XboxController controller = new XboxController(0);
   private final Joystick joystick = new Joystick(1);
 
   private int tick = 0;
@@ -143,6 +141,7 @@ public class Robot extends TimedRobot {
     kBalanceD = tab.add("kBalanceD", Constants.DriveConstants.kBalanceD).getEntry();
     kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
     kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
+
     compressor.disable();
   }
 
@@ -156,6 +155,8 @@ public class Robot extends TimedRobot {
     tick += 1;
   }
 
+  Command auton;
+
   @Override
   public void autonomousInit() {
     armSubSys.setIdleMode(CANSparkMax.IdleMode.kCoast);
@@ -167,6 +168,7 @@ public class Robot extends TimedRobot {
     drive.setIdleMode(IdleMode.kBrake);
     // drive.resetPosition(new Pose2d(10, 0, Rotation2d.fromDegrees(-180)));
     drive.resetPositionOdometry();
+    drive.disableVelocityControl();
 
     Command rotateAngles = new SequentialCommandGroup(
       new TurnToAngle(90, drive),
@@ -221,8 +223,33 @@ public class Robot extends TimedRobot {
       .andThen(new TurnToAngle(0, drive));
 
     System.out.println("Scheduling command");
+    // var outOfZone = new SequentialCommandGroup(
+    //   // new TurnToAngle(-2.2239612403854787, drive).withTimeout(3.5),
+    //   new MoveDistance(Units.metersToInches(1.051658639992556), drive)
+    // );
+    // outOfZone.schedule();
 
-    new CenterPhotonVisionTarget(drive).schedule();
+
+    var straightBalancingSequence = new SequentialCommandGroup(
+        new MoveDistance(10.517001824211251, drive).withTimeout(3.5),
+        new MoveDistance(-8.1151787916318057, drive, 6).withTimeout(3.5),
+        new Balance(drive)
+    );
+
+    var meterTest = new SequentialCommandGroup(
+      new MoveDistance(1, drive)
+    );
+
+    var exitCommunity = new SequentialCommandGroup(
+      new MoveDistance(3.5, drive)
+    );
+
+    // auton = straightBalancingSequence;
+    // auton.schedule();
+
+    Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
+
+    // new CenterPhotonVisionTarget(drive).schedule();
   }
 
   @Override
@@ -239,12 +266,16 @@ public class Robot extends TimedRobot {
     armSubSys.setIdleMode(CANSparkMax.IdleMode.kBrake);
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
+    Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
+    // auton.cancel(); // Cancel if auton didn't terminate properly
+    
   }
 
   MjpegServer driverServer;
 
   @Override
   public void teleopInit() {
+    drive.disableVelocityControl();
     drive.setIdleMode(IdleMode.kBrake);
     armSubSys.reset();
   }
@@ -263,14 +294,21 @@ public class Robot extends TimedRobot {
 
 
   boolean lastAButtonStatus = false;
+  boolean lastBButtonStatus = false;
 
   boolean loggingPoints = false;
-
+  double scalefac = 1;
   @Override
   public void teleopPeriodic() {
-    double joystickThrottle = MathUtil.clamp(1 - joystick.getThrottle()/100, 0, 1); //TODO: Not sure if this value is on the bound [0, 100] or [0, 1]
-    boolean joystickTrigger = joystick.getTrigger();;
-    System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition() + "joystick y: " + joystick.getY());
+    double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
+    System.out.println("Joystick throttle: " + joystick.getThrottle() + ", adjusted: " + joystickThrottle);
+    boolean joystickTrigger = joystick.getTrigger();
+    //if(joystick.getTriggerPressed())
+    //  scalefac = 0.5;
+    //if(joystick.getTriggerReleased())
+    //  scalefac = 1;
+
+    // System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition() + "throttle : " + joystick.getThrottle());
     
     double speed = -joystick.getY();
     double turn = joystick.getX();
@@ -281,22 +319,22 @@ public class Robot extends TimedRobot {
     speed = Math.copySign(Math.max(0, Math.abs(Math.pow(speed, 3.0)) - 0.05), speed);
     turn = Math.copySign(Math.max(0, Math.abs(Math.pow(turn, 3.0)) - 0.05), turn);
 
-    System.out.println("Speed: " + speed + "; turn: " + turn);
+    // System.out.println("Speed: " + speed + "; turn: " + turn);
     
-    drive.differentialDrive(speed, turn);
+    drive.differentialDrive(speed*joystickThrottle, turn*joystickThrottle);
 
     // for (int i = 1; i < joystick.getButtonCount(); i++) {
     //   System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
     // }
 
-    if (controller.getXButtonPressed()) {
-      if (drive.isUsingVelocity()) {
-        drive.disableVelocityControl();
-        System.out.println("Robot: Using voltage control");
-      } else {
-        drive.enableVelocityControl();
-        System.out.println("Robot: Using velocity control");
-      }
+    if (joystick.getRawButtonPressed(2)) {
+      // if (drive.isUsingVelocity()) {
+      //   drive.disableVelocityControl();
+      //   System.out.println("Robot: Using voltage control");
+      // } else {
+      //   drive.enableVelocityControl();
+      //   System.out.println("Robot: Using velocity control");
+      // }
     }
 
     // Thumb button on top of joystick
@@ -305,20 +343,20 @@ public class Robot extends TimedRobot {
     if (joystick.getRawButtonPressed(12)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
     if (joystick.getRawButtonPressed(9)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
     if (joystick.getRawButtonPressed(11)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
-    if(controller.getBButtonPressed()) {
-      if (balanceCommand.isScheduled())
-        balanceCommand.cancel();
-      else
-        balanceCommand.schedule();
+    if(controller.getRawButton(6)) {
+      // if (balanceCommand.isScheduled())
+      //   balanceCommand.cancel();
+      // else
+      //   balanceCommand.schedule();
     }
 
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
-    if(controller.getLeftBumper())
-      armSubSys.changeArmPosition(0.5);
     if(controller.getRightBumper())
-      armSubSys.changeArmPosition(-0.5);
+      armSubSys.changeExtenderPosition(1.2);
+    if(controller.getLeftBumper())
+      armSubSys.changeExtenderPosition(-1.2);
 
-    armSubSys.changeExtenderPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
+    armSubSys.changeArmPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
     // System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
     // System.out.println("Arm Encoder: " + armSubSys.getArmEncoder().getPosition());
     // System.out.println("Target Arm Position: " + target);
@@ -342,7 +380,7 @@ public class Robot extends TimedRobot {
     }
 
     // if (controller.getRawButtonPressed(7)) {
-    if (!lastAButtonStatus && controller.getStartButtonPressed()) {
+    if (!lastAButtonStatus && controller.getAButton()) {
       compressorEnabled = !compressorEnabled;
       if (compressorEnabled) {
         System.out.print("COMPRESSOR IS NOW ON\n");
@@ -351,19 +389,23 @@ public class Robot extends TimedRobot {
       }
     }
 
-    lastAButtonStatus = controller.getStartButtonPressed();
 
     // PISTON
-    if (controller.getAButtonPressed()) {
+    if (!lastBButtonStatus && controller.getBButtonPressed()) {
+      pistonForward = !pistonForward;
+      if (pistonForward) {
+        System.out.println("CLOSING PISTON");
         leftSolenoid.set(Value.kReverse);
         rightSolenoid.set(Value.kForward);
-      }
-
-    if(controller.getBButtonPressed()){
+      } else {
+        System.out.println("OPENING PISTON");
         leftSolenoid.set(Value.kForward);
         rightSolenoid.set(Value.kReverse);
+      }
     }
-    }
+
+    lastAButtonStatus = controller.getAButton();
+    lastBButtonStatus = controller.getBButton();
 
     CommandScheduler.getInstance().run();
     target = armSubSys.update();
@@ -398,7 +440,7 @@ public class Robot extends TimedRobot {
     drive.differentialDrive(speed, -turn);
 
     armSubSys.changeExtenderPosition(controller.getLeftTriggerAxis()-controller.getRightTriggerAxis());
-    System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition());
+    // System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition());
 
     // COMPRESSOR
     if (compressorEnabled) {

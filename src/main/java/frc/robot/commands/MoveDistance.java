@@ -2,54 +2,76 @@ package frc.robot.commands;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.util.Utils;
 import frc.robot.DriveSubsystem;
 
 // TODO: Migrate this to PIDCommand()
-public class MoveDistance extends PIDCommand {
+public class MoveDistance extends CommandBase {
     DriveSubsystem drive;
     double distanceMeters;
+    PIDController controller;
+    double pitchExitThreshold;
+
+    /*
+     * 39.25" -> 6"
+     * 
+     */
+
+    public MoveDistance(double distanceMeters, DriveSubsystem drive, double pitchExitThreshold) {
+        this.controller = new PIDController(DriveConstants.kMoveP, DriveConstants.kMoveI, DriveConstants.kMoveD);
+
+        this.drive = drive;
+        this.distanceMeters = distanceMeters * 39.25/6; // Temp empirical scaling factor
+
+        this.pitchExitThreshold = pitchExitThreshold;
+
+        this.controller
+            .setTolerance(DriveConstants.kMoveToleranceMeters); // TODO: Move to constants
+    }
 
     public MoveDistance(double distanceMeters, DriveSubsystem drive) {
-        super(
-            new PIDController(DriveConstants.kMoveP, DriveConstants.kMoveI, DriveConstants.kMoveD),
-            drive::getPosition,
-            drive.getPosition() + distanceMeters,
-            output -> {
-                System.out.println("MoveDistance: position is " 
-                    + Units.metersToInches(drive.getPosition()) 
-                    + " inches, target is " + Units.metersToInches(distanceMeters));
-                drive.differentialDriveVoltage(output, 0);
-            },
-            drive);
-        
-        this.drive = drive;
-        this.distanceMeters = distanceMeters;
-
-        getController()
-            .setTolerance(DriveConstants.kMoveToleranceMeters); // TODO: Move to constants
+        this(distanceMeters, drive, Double.MAX_VALUE);
     }
 
     @Override
     public void initialize() {
+        // Scale by empirical constant
         double value = drive.getPosition() + distanceMeters;
-        this.m_setpoint = () -> value;
+        controller.setSetpoint(value);
+    }
+
+    @Override
+    public void execute() {
+        double output = controller.calculate(drive.getPosition());
+        System.out.println("MoveDistance: position is " 
+            + Units.metersToInches(drive.getPosition()) 
+            + " inches, target is " + Units.metersToInches(controller.getSetpoint()));
+        
+        drive.differentialDrive(output, 0);
     }
 
     @Override
     public void end(boolean interrupted) {
-        drive.differentialDriveVoltage(0, 0);
+        drive.killMotors();
     }
 
     @Override
     public boolean isFinished() {
-        System.out.println("Is finished? " + getController().atSetpoint() + "; " + getController().getPositionTolerance() + "; " + getController().getVelocityTolerance() + "; " + getController().getPositionError());
-        
         // atSetpoint() would return false even when within tolerance.
         // No idea why? TODO: Figure out why
 
+        if (Math.abs(drive.getPitch()) > pitchExitThreshold) {
+            return true;
+        }
+
         // return getController().atSetpoint();
-        return Math.abs(getController().getPositionError()) < getController().getPositionTolerance();
+        boolean isFinished = Utils.atSetpoint(controller);
+        if (isFinished) {
+            System.out.println("MoveDistance: Finished moving " + distanceMeters + " meters with final error " + controller.getPositionError() + " meters");
+        }
+        return isFinished;
     }
 }

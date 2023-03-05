@@ -19,7 +19,7 @@ public class CenterPhotonVisionTarget extends PIDCommand {
             },
             0,
             output -> {
-                drive.differentialDriveVoltage(0, -output);
+                drive.differentialDrive(0, -output);
             },
             drive);
 
@@ -31,7 +31,7 @@ public class CenterPhotonVisionTarget extends PIDCommand {
 
     @Override
     public void end(boolean interrupted) {
-        drive.differentialDriveVoltage(0, 0);
+        drive.differentialDrive(0, 0);
     }
 
     @Override

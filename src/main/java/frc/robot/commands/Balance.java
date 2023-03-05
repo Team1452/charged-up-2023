@@ -58,9 +58,9 @@ public class Balance extends CommandBase {
         System.out.println("Pitch: " + pitch + "; roll: " + drive.getGyro().getRoll() + "; yaw: " + drive.getGyro().getYaw() + "; output: " + output + "; tolerance: " + controller.getPositionTolerance() + "; at setpoint: " + Utils.atSetpoint(controller));
         
         if (Utils.atSetpoint(controller))
-            drive.differentialDriveVoltage(0, 0);
+            drive.differentialDrive(0, 0);
         else
-            drive.differentialDriveVoltage(-output, 0);
+            drive.differentialDrive(-output, 0);
     }
 
     @Override
@@ -68,7 +68,8 @@ public class Balance extends CommandBase {
         if (Utils.atSetpoint(controller)) {
             System.out.println("Finished balancing!");
         }
-        // return atSetpoint();
-        return false;
+
+        // return false;
+        return Utils.atSetpoint(controller);
     }
 }

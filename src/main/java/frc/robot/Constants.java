@@ -9,7 +9,9 @@ public class Constants {
     public static final double PERIOD_MS = 20;    
 
     public static class DriveConstants {
-        public static final double kMaxVoltage = 0.35;
+        public static double kMaxVoltage = 0.8;
+        public static final double kMaxDriveVoltage = 1.0;
+        public static final double kMaxAutonVoltage = 1.0;
         public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
         public static final double kTrackWidth = 0.381 * 2; // meters
@@ -21,21 +23,21 @@ public class Constants {
         public static double kVelocityI = 0;
         public static double kVelocityD = 0;
 
-        public static double kMoveP = 0.3;
-        public static double kMoveI = 0.01;
-        public static double kMoveD = 0.005;
-        public static final double kMoveToleranceMeters = Units.inchesToMeters(1);
+        public static double kMoveP = 0.5;
+        public static double kMoveI = 0.012;
+        public static double kMoveD = 0.0001;
+        public static final double kMoveToleranceMeters = Units.inchesToMeters(3);
 
         // public static final double kTurnP = 0.04;
         public static double kTurnP = 0.004;
         public static double kTurnI = 0.0001;
         public static double kTurnD = 0.001;
-        public static final double kTurnAngleToleranceDegrees = 0.1;
+        public static final double kTurnAngleToleranceDegrees = 1;
 
         public static double kBalanceP = 0.018;
         public static double kBalanceI = 0.001;
         public static double kBalanceD = 0;
-        public static final double kBalanceToleranceDegrees = 1.5;
+        public static final double kBalanceToleranceDegrees = 3.5;
     }
 
     static class ScoringConstants {
