@@ -113,7 +113,7 @@ public class ArmSubsystem {
 
 
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
-            extenderPosition += extenderScaleConstant*percentChange*0.01;
+            extenderPosition += extenderScaleConstant*(Math.pow(percentChange*0.01, 3));
         }
 
     }
