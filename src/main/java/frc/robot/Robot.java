@@ -298,6 +298,9 @@ public class Robot extends TimedRobot {
 
   boolean loggingPoints = false;
   double scalefac = 1;
+
+  Command scheduledCommand = null;
+
   @Override
   public void teleopPeriodic() {
     double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
@@ -326,6 +329,18 @@ public class Robot extends TimedRobot {
     // for (int i = 1; i < joystick.getButtonCount(); i++) {
     //   System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
     // }
+
+    if (controller.getXButtonPressed()) {
+      if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
+
+      scheduledCommand = new SequentialCommandGroup(
+        new TurnToAngle(90, drive),
+        new MoveDistance(1, drive),
+        new TurnToAngle(0, drive)
+      );
+
+      scheduledCommand.schedule();
+    }
 
     if (joystick.getRawButtonPressed(2)) {
       // if (drive.isUsingVelocity()) {
