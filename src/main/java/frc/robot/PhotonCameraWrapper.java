@@ -114,7 +114,6 @@ public class PhotonCameraWrapper {
 
         // Forward Camera
         Timer timer = new Timer();
-        
         System.out.println("Connecting to photon camera '" + VisionConstants.cameraName + "'");
         photonCamera =
                 new PhotonCamera(
@@ -122,10 +121,10 @@ public class PhotonCameraWrapper {
                                 .cameraName); // Change the name of your camera here to whatever it is in the
         System.out.println("Connected camera, " + photonCamera.getName() + ": " + photonCamera.isConnected());
 
-        // Create pose estimator
-        // photonPoseEstimator =
-        //         new PhotonPoseEstimator(
-        //                 atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
+         //Create pose estimator
+         photonPoseEstimator =
+                 new PhotonPoseEstimator(
+                         atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
 
     }
 
@@ -141,9 +140,8 @@ public class PhotonCameraWrapper {
      *     of the observation. Assumes a planar field and the robot is always firmly on the ground
      */
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose(Pose2d prevEstimatedRobotPose) {
-        // photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
-        // return photonPoseEstimator.update();
-        return Optional.empty();
+         photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
+         return photonPoseEstimator.update();
     }
     public List<PhotonTrackedTarget> getTargets() {
         var result = photonCamera.getLatestResult();

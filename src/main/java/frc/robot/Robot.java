@@ -81,8 +81,6 @@ public class Robot extends TimedRobot {
 
   private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
 
-  private final BangBangController pressureController = new BangBangController();
-
   // COUNTERCLOCKWISE is positive
 
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
@@ -272,7 +270,7 @@ public class Robot extends TimedRobot {
   }
 
   MjpegServer driverServer;
-
+  PhotonCameraWrapper pCam = new PhotonCameraWrapper();
   @Override
   public void teleopInit() {
     drive.disableVelocityControl();
@@ -298,8 +296,11 @@ public class Robot extends TimedRobot {
 
   boolean loggingPoints = false;
   double scalefac = 1;
+  Pose2d prevPose = new Pose2d();
   @Override
   public void teleopPeriodic() {
+    prevPose = pCam.getEstimatedGlobalPose(prevPose).map(x -> x.estimatedPose.toPose2d()).get();
+    System.out.println("X: " + prevPose.getX() + "Y: " + prevPose.getY());
     double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
     System.out.println("Joystick throttle: " + joystick.getThrottle() + ", adjusted: " + joystickThrottle);
     boolean joystickTrigger = joystick.getTrigger();
@@ -449,15 +450,6 @@ public class Robot extends TimedRobot {
       double vOut = pressureSensor.getAverageVoltage();
       double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
 
-      pressureController.calculate(pressure, Constants.PneumaticConstants.MAX_PRESSURE);
-      if (pressureController.atSetpoint()) {
-        compressor.enableDigital();
-      } else {
-        compressor.disable();
-      }
-    } else {
-      compressor.disable();
-    }
 
     if (controller.getAButtonPressed()) {
       compressorEnabled = !compressorEnabled;
@@ -481,26 +473,7 @@ public class Robot extends TimedRobot {
       }
     }
 
-/*
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
-    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
-    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
-    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
-    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
- */
 
-  }
+     }
+     }
 }
