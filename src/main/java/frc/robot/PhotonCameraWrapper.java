@@ -2,6 +2,8 @@ package frc.robot;
 
 import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.apriltag.AprilTagFieldLayout.OriginPosition;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Quaternion;
@@ -60,13 +62,14 @@ public class PhotonCameraWrapper {
          */
         File currentDirFile = new File("");
         String dir = currentDirFile.getAbsolutePath() + "\\apriltag_poses.json"; 
-        Scanner reader;
+        Scanner reader = null;
         try {
                 reader = new Scanner(new File(dir));
         } catch (FileNotFoundException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
         }
+        /*
         double size = 152.4; //in mm
         Stream<Object> ids = reader.findAll(Pattern.compile("(?:\"id\"\\s*:\\s*)\\w+")).map(x -> x.toString());
         int[] idStrings = ids.mapToInt(x -> Integer.parseInt( (x.toString() ) )).toArray();
@@ -90,6 +93,7 @@ public class PhotonCameraWrapper {
                 tagList.add(new AprilTag(idStrings[i], new Pose3d(trans, rot)));
 
         }
+        */
                // Set up a test arena of two apriltags at the center of each driver station set
         final AprilTag tag18 =
                 new AprilTag(
@@ -100,10 +104,13 @@ public class PhotonCameraWrapper {
                                         FieldConstants.width / 2.0,
                                         Rotation2d.fromDegrees(180))));
         ArrayList<AprilTag> atList = new ArrayList<AprilTag>();
-
-        // TODO - once 2023 happens, replace this with just loading the 2023 field arrangement
-        AprilTagFieldLayout atfl =
-                new AprilTagFieldLayout(tagList, FieldConstants.length, FieldConstants.width);
+                //new AprilTagFieldLayout(tagList, FieldConstants.length, FieldConstants.width);
+                AprilTagFieldLayout atfl = null;
+                try {
+                        atfl = new AprilTagFieldLayout(AprilTagFields.k2023ChargedUp.m_resourceFile);
+                } catch (IOException e) {
+                        e.printStackTrace();
+                }
 
         // Forward Camera
         Timer timer = new Timer();
