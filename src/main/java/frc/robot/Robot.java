@@ -114,7 +114,10 @@ public class Robot extends TimedRobot {
 
   private ShuffleboardTab tab = Shuffleboard.getTab(String.format("Pt. H %.4f", Math.random()));
 
+  private PIDController turnPid = new PIDController(Constants.DriveConstants.kTurnP, Constants.DriveConstants.kTurnI, Constants.DriveConstants.kTurnD);
+
   private GenericEntry kBalanceP, kBalanceI, kBalanceD;
+  private GenericEntry kTurnP, kTurnI, kTurnD;
   private GenericEntry kMaxSpeed, kMaxVoltage;
 
   private Balance balanceCommand;
@@ -124,6 +127,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
+    turnPid.enableContinuousInput(-180, 180);
+
     try {
       LocalTime time = LocalTime.now();
       balancingPointsLog = new File(String.format("/home/lvuser/custom/point_%d:%d:%d_%s.csv", (time.getHour() + 1) % 12, time.getMinute(), time.getSecond(), time.getHour() > 11 ? "PM" : "AM"));
@@ -139,6 +144,9 @@ public class Robot extends TimedRobot {
     kBalanceP = tab.add("kBalanceP", Constants.DriveConstants.kBalanceP).getEntry();
     kBalanceI = tab.add("kBalanceI", Constants.DriveConstants.kBalanceI).getEntry();
     kBalanceD = tab.add("kBalanceD", Constants.DriveConstants.kBalanceD).getEntry();
+    kTurnP = tab.add("kTurnP", Constants.DriveConstants.kTurnP).getEntry();
+    kTurnI = tab.add("kTurnI", Constants.DriveConstants.kTurnI).getEntry();
+    kTurnD = tab.add("kTurnD", Constants.DriveConstants.kTurnD).getEntry();
     kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
     kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
 
@@ -150,6 +158,11 @@ public class Robot extends TimedRobot {
     Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
     Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
     Constants.DriveConstants.kBalanceD = kBalanceD.getDouble(0);
+
+    turnPid.setP(kTurnP.getDouble(0));
+    turnPid.setI(kTurnI.getDouble(0));
+    turnPid.setD(kTurnD.getDouble(0));
+
     drive.setMaxVoltage(kMaxVoltage.getDouble(0));
     drive.setMaxSpeed(kMaxSpeed.getDouble(0));
     tick += 1;
@@ -304,31 +317,14 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
-    System.out.println("Joystick throttle: " + joystick.getThrottle() + ", adjusted: " + joystickThrottle);
-    boolean joystickTrigger = joystick.getTrigger();
-    //if(joystick.getTriggerPressed())
-    //  scalefac = 0.5;
-    //if(joystick.getTriggerReleased())
-    //  scalefac = 1;
-
-    // System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition() + "throttle : " + joystick.getThrottle());
     
     double speed = -joystick.getY();
     double turn = joystick.getX();
-
-    // double speed = Math.pow(-joystick.getY(), 3.0);
-    // double turn = Math.pow(joystick.getTwist(), 3.0);
     
     speed = Math.copySign(Math.max(0, Math.abs(Math.pow(speed, 3.0)) - 0.05), speed);
     turn = Math.copySign(Math.max(0, Math.abs(Math.pow(turn, 3.0)) - 0.05), turn);
-
-    // System.out.println("Speed: " + speed + "; turn: " + turn);
     
     drive.differentialDrive(speed*joystickThrottle, turn*joystickThrottle);
-
-    // for (int i = 1; i < joystick.getButtonCount(); i++) {
-    //   System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
-    // }
 
     if (controller.getXButtonPressed()) {
       if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
@@ -366,10 +362,13 @@ public class Robot extends TimedRobot {
     }
 
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
-    if(controller.getRightBumper())
+    if(controller.getRightBumper()) {
       armSubSys.changeExtenderPosition(1.2);
-    if(controller.getLeftBumper())
+    }
+
+    if(controller.getLeftBumper()) {
       armSubSys.changeExtenderPosition(-1.2);
+    }
 
     armSubSys.changeArmPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
     // System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
@@ -431,91 +430,34 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
-    armSubSys.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    leftSolenoid.set(Value.kOff); // Off by default
-    rightSolenoid.set(Value.kOff);
   }
 
+  boolean needsToFaceFront = false;
 
   @Override
   public void testPeriodic() {
-    
-    // double pov = joystick.getPOV();
+    double throttle = 1-(joystick.getThrottle() + 1)/2;
+    double x = joystick.getX();
+    double y = -joystick.getY(); // Forward is negative on joystick
 
-    // System.out.println("throttle: " + joystickThrottle + "; trigger: " + joystickTrigger + "; pov: " + pov);
+    double speed = throttle * Math.copySign(Math.max(0, Math.abs(Math.pow(x, 3.0)) - 0.05), x);
 
-    // DRIVE
+    double targetAngle = Math.toDegrees(Math.atan2(y, x));
+    double currentAngle = drive.getHeading();
 
-    // Controller forward is negative
-    double joystickThrottle = joystick.getThrottle();
-    boolean joystickTrigger = joystick.getTrigger();
-    double speed = Math.pow(-controller.getRightY(), 3.0);
-    double turn = Math.pow(controller.getRightX(), 3.0);
-
-    drive.differentialDrive(speed, -turn);
-
-    armSubSys.changeExtenderPosition(controller.getLeftTriggerAxis()-controller.getRightTriggerAxis());
-    // System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition());
-
-    // COMPRESSOR
-    if (compressorEnabled) {
-      // Calculate pressure from analog input
-      // (from REV analog sensor datasheet)
-      double vOut = pressureSensor.getAverageVoltage();
-      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
-
-      pressureController.calculate(pressure, Constants.PneumaticConstants.MAX_PRESSURE);
-      if (pressureController.atSetpoint()) {
-        compressor.enableDigital();
-      } else {
-        compressor.disable();
-      }
-    } else {
-      compressor.disable();
+    if (
+      !needsToFaceFront
+        && Math.abs(targetAngle - currentAngle) > 90
+    ) {
+      targetAngle = targetAngle - 180;
     }
 
-    if (controller.getAButtonPressed()) {
-      compressorEnabled = !compressorEnabled;
-      if (compressorEnabled) {
-        System.out.println("COMPRESSOR IS NOW ENABLED");
-      } else {
-        System.out.println("COMPRESSOR IS NOW DISABLED");
-      }
+    double turn = turnPid.calculate(drive.getHeading(), targetAngle);
+
+    if (joystick.getRawButtonPressed(2)) {
+      needsToFaceFront = !needsToFaceFront;
     }
 
-    // PISTON
-    if (controller.getYButtonPressed()) {
-      pistonForward = !pistonForward;
-      System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward) {
-        leftSolenoid.set(Value.kReverse);
-        rightSolenoid.set(Value.kForward);
-      } else {
-        leftSolenoid.set(Value.kForward);
-        rightSolenoid.set(Value.kReverse);
-      }
-    }
-
-/*
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
-    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
-    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
-    SmartDashboard.putNumber("arm Angle Degrees", Units.radiansToDegrees(armScaleRad*armEncoder.getPosition()));
-    SmartDashboard.putBoolean("Arm Height Near Level Two Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_TWO_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putBoolean("Arm Height Near Level Three Pole",
-     Math.abs(armSubSys.getArmHeight() - Constants.FieldConstants.LEVEL_THREE_POLE_HEIGHT) < 0.1);
-    SmartDashboard.putNumber("Extender Encoder" , extenderEncoder.getPosition());
-    SmartDashboard.putNumber("Arm Encoder" , armEncoder.getPosition());
-    SmartDashboard.putNumber("arm Height", armSubSys.getArmHeight());
- */
-
+    drive.differentialDrive(speed, turn);
   }
 }

@@ -6,24 +6,25 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkMaxPIDController;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants.FieldConstants;
 public class ArmSubsystem {
 
     public enum ArmTargetChoice {
-
         MANUAL_CONTROL,
         LEVEL_TWO_POLE,
         LEVEL_TWO_PLATFORM,
         LEVEL_THREE_POLE,
         LEVEL_THREE_PLATFORM,
     }
+
     private ArmTargetChoice targetChoice = ArmTargetChoice.MANUAL_CONTROL;
     private CANSparkMax arm;
     private CANSparkMax extender; 
 
     double armPosition = 0;
-    double extenderPosition = 0;
+    public double extenderPosition = 0;
 
     double oldArmPosition;
     double oldExtenderPosition;
@@ -63,7 +64,7 @@ public class ArmSubsystem {
         armPID = arm.getPIDController();
         extenderPID = extender.getPIDController();
         //Set gains in robotInit
-        extenderPosition =  extenderEncoder.getPosition();
+        extenderPosition = extenderEncoder.getPosition();
         armPosition = armEncoder.getPosition();
 
         oldExtenderPosition = extenderPosition;
@@ -111,18 +112,16 @@ public class ArmSubsystem {
     public void changeExtenderPosition(double percentChange){
         updateSavedPositions();
 
-
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
-            extenderPosition += extenderScaleConstant*(Math.pow(percentChange*0.01, 3));
+            extenderPosition += extenderScaleConstant*percentChange/100.0;
         }
-
     }
 
     public void changeArmPosition(double percentChange){
         updateSavedPositions();
 
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
-            armPosition += armScaleConstant*percentChange*0.01;
+            armPosition += armScaleConstant*percentChange/100.0;
         }
 
     }
@@ -173,12 +172,15 @@ public class ArmSubsystem {
         }
         armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
             Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
+        
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
-        extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,
-            Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS));
-        if(targetChoice == ArmTargetChoice.MANUAL_CONTROL || Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1)
+        extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
+
+        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL || Math.abs(extenderEncoder.getPosition() - extenderPosition) < 0.1) {
             extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
+            System.out.println("Manual Control: Setting extender PID to " + (-extenderPosition));
+        }
 
         return out;
     }

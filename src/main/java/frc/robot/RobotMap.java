@@ -10,8 +10,8 @@ public class RobotMap {
     public static boolean TEST_MOTOR_LEFT_INVERTED = false;
     public static boolean TEST_MOTOR_RIGHT_INVERTED = true;
 
-    public static int[] MOTOR_LEFT = {14};
-    public static int[] MOTOR_RIGHT = {3};
+    public static int[] MOTOR_LEFT = {13, 17};
+    public static int[] MOTOR_RIGHT = {14, 3};
     public static boolean MOTOR_LEFT_INVERTED = false;
     public static boolean MOTOR_RIGHT_INVERTED = true;
     public static int MOTOR_ARM = 12;
