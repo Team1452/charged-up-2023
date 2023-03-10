@@ -301,42 +301,19 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     prevPose = pCam.getEstimatedGlobalPose(prevPose).map(x -> x.estimatedPose.toPose2d()).get();
     System.out.println("X: " + prevPose.getX() + "Y: " + prevPose.getY());
-    double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
-    System.out.println("Joystick throttle: " + joystick.getThrottle() + ", adjusted: " + joystickThrottle);
-    boolean joystickTrigger = joystick.getTrigger();
-    //if(joystick.getTriggerPressed())
-    //  scalefac = 0.5;
-    //if(joystick.getTriggerReleased())
-    //  scalefac = 1;
 
-    // System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition() + "throttle : " + joystick.getThrottle());
-    
-    double speed = -joystick.getY();
-    double turn = joystick.getX();
 
-    // double speed = Math.pow(-joystick.getY(), 3.0);
-    // double turn = Math.pow(joystick.getTwist(), 3.0);
-    
+    scalefac = 1-(joystick.getThrottle() + 1)/2;
+    if(joystick.getTrigger())
+      scalefac *= 0.2; //TODO Tune this to driver pref
+
+    double speed = (-Math.pow(joystick.getY(), 3)*scalefac);
+    double turn = (Math.pow(joystick.getX(), 3)*scalefac);
     speed = Math.copySign(Math.max(0, Math.abs(Math.pow(speed, 3.0)) - 0.05), speed);
     turn = Math.copySign(Math.max(0, Math.abs(Math.pow(turn, 3.0)) - 0.05), turn);
+    drive.differentialDrive(speed, turn);
 
-    // System.out.println("Speed: " + speed + "; turn: " + turn);
-    
-    drive.differentialDrive(speed*joystickThrottle, turn*joystickThrottle);
 
-    // for (int i = 1; i < joystick.getButtonCount(); i++) {
-    //   System.out.println("Button #" + i + " : " + joystick.getRawButtonPressed(i));
-    // }
-
-    if (joystick.getRawButtonPressed(2)) {
-      // if (drive.isUsingVelocity()) {
-      //   drive.disableVelocityControl();
-      //   System.out.println("Robot: Using voltage control");
-      // } else {
-      //   drive.enableVelocityControl();
-      //   System.out.println("Robot: Using velocity control");
-      // }
-    }
 
     // Thumb button on top of joystick
     if (joystick.getRawButtonPressed(2)) target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
@@ -350,17 +327,14 @@ public class Robot extends TimedRobot {
       // else
       //   balanceCommand.schedule();
     }
-
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
     if(controller.getRightBumper())
-      armSubSys.changeExtenderPosition(1.2);
+      armSubSys.changeExtenderPosition(1.2); //TODO: Tune to driver preference
     if(controller.getLeftBumper())
       armSubSys.changeExtenderPosition(-1.2);
 
     armSubSys.changeArmPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
-    // System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
-    // System.out.println("Arm Encoder: " + armSubSys.getArmEncoder().getPosition());
-    // System.out.println("Target Arm Position: " + target);
+
     if (compressorEnabled) {
       // Calculate pressure from analog input
       // (from REV analog sensor datasheet)
@@ -407,6 +381,16 @@ public class Robot extends TimedRobot {
 
     lastAButtonStatus = controller.getAButton();
     lastBButtonStatus = controller.getBButton();
+
+    if (joystick.getRawButtonPressed(2)) {
+      // if (drive.isUsingVelocity()) {
+      //   drive.disableVelocityControl();
+      //   System.out.println("Robot: Using voltage control");
+      // } else {
+      //   drive.enableVelocityControl();
+      //   System.out.println("Robot: Using velocity control");
+      // }
+    }
 
     CommandScheduler.getInstance().run();
     target = armSubSys.update();
