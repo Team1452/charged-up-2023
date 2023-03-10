@@ -81,8 +81,6 @@ public class Robot extends TimedRobot {
 
   private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
 
-  private final BangBangController pressureController = new BangBangController();
-
   // COUNTERCLOCKWISE is positive
 
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
@@ -290,7 +288,7 @@ public class Robot extends TimedRobot {
   }
 
   MjpegServer driverServer;
-
+  PhotonCameraWrapper pCam = new PhotonCameraWrapper();
   @Override
   public void teleopInit() {
     drive.disablePIDControl();
@@ -319,8 +317,11 @@ public class Robot extends TimedRobot {
 
   Command scheduledCommand = null;
 
+  Pose2d prevPose = new Pose2d();
   @Override
   public void teleopPeriodic() {
+    prevPose = pCam.getEstimatedGlobalPose(prevPose).map(x -> x.estimatedPose.toPose2d()).get();
+    System.out.println("X: " + prevPose.getX() + "Y: " + prevPose.getY());
     double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
     
     double speed = -joystick.getY();
