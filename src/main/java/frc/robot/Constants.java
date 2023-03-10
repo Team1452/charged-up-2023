@@ -11,30 +11,35 @@ public class Constants {
     public static class DriveConstants {
         public static double kMaxVoltage = 0.8;
         public static final double kMaxDriveVoltage = 1.0;
-        public static final double kMaxAutonVoltage = 1.0;
+        public static final double kMaxAutonVoltage = 0.1;
         public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
         public static final double kTrackWidth = 0.381 * 2; // meters
         public static final double kWheelRadius = Units.inchesToMeters(3);
-        public static final double kGearRatio = 1/6;
+        public static final double kGearRatio = 1/12.25;
         public static final double kDistancePerPulse = kGearRatio * 2 * Math.PI * kWheelRadius;
 
         public static double kVelocityP = 0.001;
         public static double kVelocityI = 0;
         public static double kVelocityD = 0;
 
-        public static double kMoveP = 0.5;
+        public static double kMoveP = 0.001;
         public static double kMoveI = 0.012;
         public static double kMoveD = 0.0001;
         public static final double kMoveToleranceMeters = Units.inchesToMeters(3);
 
         // public static final double kTurnP = 0.04;
+        public static double kControlTurnP = 0.0004;
+    
+        public static double kControlTurnI = 0.00001;
+        public static double kControlTurnD = 0.0001;
+
         public static double kTurnP = 0.004;
         public static double kTurnI = 0.0001;
         public static double kTurnD = 0.001;
         public static final double kTurnAngleToleranceDegrees = 1;
 
-        public static double kBalanceP = 0.018;
+        public static double kBalanceP = 0.009;
         public static double kBalanceI = 0.001;
         public static double kBalanceD = 0;
         public static final double kBalanceToleranceDegrees = 3.5;

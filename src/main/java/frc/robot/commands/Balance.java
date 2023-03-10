@@ -13,6 +13,7 @@ import frc.robot.DriveSubsystem;
 // TODO: Migrate this to PIDCommand()
 public class Balance extends CommandBase {
     private static double UPDATE_LATENCY_MS = 20;    
+    private float ticksElapsed = 0;
 
     PIDController controller;
     DriveSubsystem drive;
@@ -41,6 +42,7 @@ public class Balance extends CommandBase {
 
     @Override
     public void execute() {
+        ticksElapsed += 1.0;
         // ticksSinceLastUpdate += 1;
 
         // if (ticksSinceLastUpdate * Constants.PERIOD_MS < UPDATE_LATENCY_MS - 1e-5) {
@@ -55,6 +57,8 @@ public class Balance extends CommandBase {
 
         double pitch = drive.getPitch();
         double output = controller.calculate(pitch, 0);
+
+        output *= 1/Math.exp(ticksElapsed/100);
         System.out.println("Pitch: " + pitch + "; roll: " + drive.getGyro().getRoll() + "; yaw: " + drive.getGyro().getYaw() + "; output: " + output + "; tolerance: " + controller.getPositionTolerance() + "; at setpoint: " + Utils.atSetpoint(controller));
         
         if (Utils.atSetpoint(controller))

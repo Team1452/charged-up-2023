@@ -114,7 +114,7 @@ public class Robot extends TimedRobot {
 
   private ShuffleboardTab tab = Shuffleboard.getTab(String.format("Pt. H %.4f", Math.random()));
 
-  private PIDController turnPid = new PIDController(Constants.DriveConstants.kTurnP, Constants.DriveConstants.kTurnI, Constants.DriveConstants.kTurnD);
+  private PIDController turnPid = new PIDController(Constants.DriveConstants.kControlTurnP, Constants.DriveConstants.kControlTurnI, Constants.DriveConstants.kControlTurnD);
 
   private GenericEntry kBalanceP, kBalanceI, kBalanceD;
   private GenericEntry kTurnP, kTurnI, kTurnD;
@@ -144,11 +144,12 @@ public class Robot extends TimedRobot {
     kBalanceP = tab.add("kBalanceP", Constants.DriveConstants.kBalanceP).getEntry();
     kBalanceI = tab.add("kBalanceI", Constants.DriveConstants.kBalanceI).getEntry();
     kBalanceD = tab.add("kBalanceD", Constants.DriveConstants.kBalanceD).getEntry();
-    kTurnP = tab.add("kTurnP", Constants.DriveConstants.kTurnP).getEntry();
-    kTurnI = tab.add("kTurnI", Constants.DriveConstants.kTurnI).getEntry();
-    kTurnD = tab.add("kTurnD", Constants.DriveConstants.kTurnD).getEntry();
+    kTurnP = tab.add("kTurnP", turnPid.getP()).getEntry();
+    kTurnI = tab.add("kTurnI", turnPid.getI()).getEntry();
+    kTurnD = tab.add("kTurnD", turnPid.getD()).getEntry();
     kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
-    kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
+    // kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
+    kMaxVoltage = tab.add("kMaxVoltage", 0.2).getEntry();
 
     compressor.disable();
   }
@@ -181,7 +182,7 @@ public class Robot extends TimedRobot {
     drive.setIdleMode(IdleMode.kBrake);
     // drive.resetPosition(new Pose2d(10, 0, Rotation2d.fromDegrees(-180)));
     drive.resetPositionOdometry();
-    drive.disableVelocityControl();
+    drive.disablePIDControl();
 
     Command rotateAngles = new SequentialCommandGroup(
       new TurnToAngle(90, drive),
@@ -257,11 +258,16 @@ public class Robot extends TimedRobot {
       new MoveDistance(3.5, drive)
     );
 
-    // auton = straightBalancingSequence;
-    // auton.schedule();
+    var climbAndExit = new SequentialCommandGroup(
+      new MoveDistance(5, drive, 9),
+      new Balance(drive)
+    );
+
+    auton = new Balance(drive).andThen(() -> drive.holdPosition());
+    auton.schedule();
 
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
-
+    drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
     // new CenterPhotonVisionTarget(drive).schedule();
   }
 
@@ -280,15 +286,14 @@ public class Robot extends TimedRobot {
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
-    // auton.cancel(); // Cancel if auton didn't terminate properly
-    
+    if (auton != null) auton.cancel(); // Cancel if auton didn't terminate properly
   }
 
   MjpegServer driverServer;
 
   @Override
   public void teleopInit() {
-    drive.disableVelocityControl();
+    drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kBrake);
     armSubSys.reset();
   }
@@ -354,6 +359,7 @@ public class Robot extends TimedRobot {
     if (joystick.getRawButtonPressed(12)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
     if (joystick.getRawButtonPressed(9)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
     if (joystick.getRawButtonPressed(11)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+    //armSubSys.setTargetMode(target);
     if(controller.getRawButton(6)) {
       // if (balanceCommand.isScheduled())
       //   balanceCommand.cancel();
@@ -434,30 +440,39 @@ public class Robot extends TimedRobot {
 
   boolean needsToFaceFront = false;
 
+  double lastSetAngle = 0;
+
   @Override
   public void testPeriodic() {
     double throttle = 1-(joystick.getThrottle() + 1)/2;
     double x = joystick.getX();
     double y = -joystick.getY(); // Forward is negative on joystick
 
-    double speed = throttle * Math.copySign(Math.max(0, Math.abs(Math.pow(x, 3.0)) - 0.05), x);
+    x = Math.copySign(Math.max(Math.abs(x) - 0.1, 0), x);
+    y = Math.copySign(Math.max(Math.abs(y) - 0.1, 0), y);
+
+    double speed, turn;
+
+    speed = Math.hypot(x, y);
+    speed = Math.copySign(Math.pow(speed, 3), speed);
 
     double targetAngle = Math.toDegrees(Math.atan2(y, x));
     double currentAngle = drive.getHeading();
 
-    if (
-      !needsToFaceFront
-        && Math.abs(targetAngle - currentAngle) > 90
-    ) {
-      targetAngle = targetAngle - 180;
+    if (Math.abs(x) < 1e-6 && Math.abs(y) < 1e-6) {
+      speed = 0;
+      targetAngle = lastSetAngle;
     }
 
-    double turn = turnPid.calculate(drive.getHeading(), targetAngle);
+    turn = turnPid.calculate(currentAngle, targetAngle);
+
 
     if (joystick.getRawButtonPressed(2)) {
       needsToFaceFront = !needsToFaceFront;
     }
 
-    drive.differentialDrive(speed, turn);
+    System.out.printf("Current angle: %.3f. Target angle: %.3f\n", currentAngle, targetAngle);
+
+    drive.differentialDrive(0, turn);
   }
 }
