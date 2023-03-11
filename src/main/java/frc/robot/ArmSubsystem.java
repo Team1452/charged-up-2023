@@ -83,6 +83,9 @@ public class ArmSubsystem {
         extenderPID.setOutputRange(-1, 1);
         extenderPID.setIZone(0);
         extenderPID.setFF(0);
+
+        // extenderEncoder.setPositionConversionFactor(1.0/Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE);
+        // armEncoder.setPositionConversionFactor(1.0/Constants.ArmConstants.ARM_ROTATION_RANGE_ROT);
     }
 
     private void updateSavedPositions() {
@@ -170,20 +173,27 @@ public class ArmSubsystem {
         if(Math.abs(armEncoder.getPosition()-armPosition)<0.1 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1 ){
             out = ArmTargetChoice.MANUAL_CONTROL;
         }
-        armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
-            Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
-        
-        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
-        extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
+        setArmPosition(armPosition);
+        setExtenderPosition(extenderPosition);
 
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL || Math.abs(extenderEncoder.getPosition() - extenderPosition) < 0.1) {
-            extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
             System.out.println("Manual Control: Setting extender PID to " + (-extenderPosition));
         }
 
         return out;
     }
+
+    public void setExtenderPosition(double extenderPosition) {
+        extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
+        extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
+    }
+
+    public void setArmPosition(double armPosition) {
+        armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
+    }
+    
     public double getArmHeight(){
         return armY;
     }

@@ -83,6 +83,7 @@ public class PhotonCameraWrapper {
 
         }
         */
+        /*
                // Set up a test arena of two apriltags at the center of each driver station set
         final AprilTag tag18 =
                 new AprilTag(
@@ -114,13 +115,15 @@ public class PhotonCameraWrapper {
          photonPoseEstimator =
                  new PhotonPoseEstimator(
                          atfl, PoseStrategy.AVERAGE_BEST_TARGETS, photonCamera, VisionConstants.robotToCam);
+                         */
 
     }
 
     public PhotonTrackedTarget getTarget() {
-        PhotonPipelineResult result = photonCamera.getLatestResult();
-        if (result.hasTargets()) return result.getBestTarget();
-        else return null;
+        return null;
+        // PhotonPipelineResult result = photonCamera.getLatestResult();
+        // if (result.hasTargets()) return result.getBestTarget();
+        // else return null;
     }
 
     /**
@@ -129,12 +132,14 @@ public class PhotonCameraWrapper {
      *     of the observation. Assumes a planar field and the robot is always firmly on the ground
      */
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose(Pose2d prevEstimatedRobotPose) {
-         photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
-         return photonPoseEstimator.update();
+        return Optional.empty();
+        //  photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
+        //  return photonPoseEstimator.update();
     }
     public List<PhotonTrackedTarget> getTargets() {
-        var result = photonCamera.getLatestResult();
-        List<PhotonTrackedTarget> targets = result.getTargets();
-        return targets;
+        return new ArrayList<>();
+        // var result = photonCamera.getLatestResult();
+        // List<PhotonTrackedTarget> targets = result.getTargets();
+        // return targets;
     }
 }

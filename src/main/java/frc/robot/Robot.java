@@ -69,8 +69,10 @@ import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.ArmSubsystem.ArmTargetChoice;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
+import frc.robot.commands.SetArmAndExtender;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.EditableParameter;
+import io.javalin.Javalin;
 import kotlin.UByteArrayKt;
 import frc.robot.commands.CenterPhotonVisionTarget;
 
@@ -150,7 +152,7 @@ public class Robot extends TimedRobot {
     kTurnD = tab.add("kTurnD", turnPid.getD()).getEntry();
     kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
     // kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
-    kMaxVoltage = tab.add("kMaxVoltage", 0.2).getEntry();
+    kMaxVoltage = tab.add("kMaxVoltage", 0.35).getEntry();
 
     compressor.disable();
   }
@@ -179,6 +181,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
+    armSubSys.reset();
     armSubSys.setIdleMode(CANSparkMax.IdleMode.kCoast);
 
     Command moveForward = new MoveDistance(10, drive);
@@ -266,24 +269,31 @@ public class Robot extends TimedRobot {
       new MoveDistance(3.5, drive)
     );
 
-    Command jerkBack = new MoveDistance(-Units.inchesToMeters(12), drive)
-        .withCustomGains(0.2, 0, 0)
-        .withTimeout(1);
+    Command jerkBack = new MoveDistance(-Units.inchesToMeters(6), drive)
+        .withCustomGains(50, 0, 0)
+        .withMaxVoltage(0.5)
+        .withTimeout(1)
+        .andThen(() -> drive.killMotors())
+        .andThen(new MoveDistance(Units.inchesToMeters(6), drive))
+        .andThen(() -> drive.killMotors());
 
+    SequentialCommandGroup flipAndPushBackCone = new SequentialCommandGroup(
+      new SetArmAndExtender(armSubSys, 10, armSubSys.getExtenderPosition()/Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE)
+        .withTimeout(2),
+      new SetArmAndExtender(armSubSys, 0, armSubSys.getExtenderPosition()/Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE)
+        .withTimeout(2)
+    ).andThen(() -> drive.killMotors());
 
     SequentialCommandGroup jerkClimbAndExit = new SequentialCommandGroup(
       jerkBack,
-      new MoveDistance(-Units.inchesToMeters(12), drive)
-        .withCustomGains(0.2, 0, 0)
-        .withTimeout(1),
-      new MoveDistance(5, drive)
+      new MoveDistance(2, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive).withTimeout(9)
     ).andThen(() -> drive.holdPosition());
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());
-    auton = jerkBack;
+    auton = flipAndPushBackCone;
     auton.schedule();
 
 
@@ -312,11 +322,15 @@ public class Robot extends TimedRobot {
 
   MjpegServer driverServer;
   PhotonCameraWrapper pCam = new PhotonCameraWrapper();
+  double teleopTargetAngle = 0;
+
   @Override
   public void teleopInit() {
     drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kBrake);
-    targetAngle = drive.getHeading();
+    Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
+    drive.setMaxVoltage(1);
+    teleopTargetAngle = drive.getHeading();
     armSubSys.reset();
   }
 
@@ -340,7 +354,8 @@ public class Robot extends TimedRobot {
   double scalefac = 1;
 
   Command scheduledCommand = null;
-  double targetAngle = 0;
+
+  boolean turnIsAbsolute = false;
 
   @Override
   public void teleopPeriodic() {
@@ -351,12 +366,16 @@ public class Robot extends TimedRobot {
     
     double jx = joystick.getX();
     double jy = -joystick.getY();
-    
-    double speed = Math.copySign(Math.max(0, Math.abs(Math.pow(jy, 3.0)) - 0.05), jy);
-    // double turn = Math.copySign(Math.max(0, Math.abs(Math.pow(jx, 3.0)) - 0.05), jx);
+    double deadzone = 0.02;
+    double speed = Math.copySign(Math.max(0, Math.abs(Math.pow(jy, 3.0)) - deadzone), jy);
+    double turn;
 
-    double targetAngle = targetAngle + 10 * jx;
-    double turn = throttle*turnPid.calculate(targetAngle);
+    if (turnIsAbsolute) {
+      teleopTargetAngle = teleopTargetAngle + 10 * jx;
+      turn = throttle*turnPid.calculate(teleopTargetAngle);
+    } else {
+      turn = Math.copySign(Math.max(0, Math.abs(Math.pow(jx, 3.0)) - deadzone), jx);
+    }
 
     drive.differentialDrive(throttle*speed, throttle*turn);
 
@@ -383,6 +402,7 @@ public class Robot extends TimedRobot {
     }
 
     // Thumb button on top of joystick
+    if (joystick.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
     if (joystick.getRawButtonPressed(2)) target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
     if (joystick.getRawButtonPressed(10)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
     if (joystick.getRawButtonPressed(12)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
@@ -465,6 +485,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
+    armSubSys.setIdleMode(IdleMode.kCoast);
   }
 
   boolean needsToFaceFront = false;

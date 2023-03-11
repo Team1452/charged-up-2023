@@ -16,6 +16,7 @@ public class MoveDistance extends CommandBase {
     PIDController controller;
     double pitchExitThreshold;
     double msElapsedSinceMetPitch = 0;
+    double maxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
 
     /*
      * 39.25" -> 6"
@@ -26,12 +27,17 @@ public class MoveDistance extends CommandBase {
         this.controller = new PIDController(DriveConstants.kMoveP, DriveConstants.kMoveI, DriveConstants.kMoveD);
 
         this.drive = drive;
-        this.distanceMeters = distanceMeters * 39.25/6; // Temp empirical scaling factor
+        this.distanceMeters = distanceMeters; // Temp empirical scaling factor
 
         this.pitchExitThreshold = Double.MAX_VALUE;
 
         this.controller
             .setTolerance(DriveConstants.kMoveToleranceMeters); // TODO: Move to constants
+    }
+
+    public MoveDistance withMaxVoltage(double maxVoltage) {
+        this.maxVoltage = maxVoltage; 
+        return this;
     }
 
     public MoveDistance withPitchExitThreshold(double degrees) {
@@ -47,6 +53,7 @@ public class MoveDistance extends CommandBase {
     @Override
     public void initialize() {
         // Scale by empirical constant
+        drive.setMaxVoltage(maxVoltage);
         double value = drive.getPosition() + distanceMeters;
         controller.setSetpoint(value);
     }
@@ -56,14 +63,15 @@ public class MoveDistance extends CommandBase {
         double output = controller.calculate(drive.getPosition());
         System.out.println("MoveDistance: position is " 
             + Units.metersToInches(drive.getPosition()) 
-            + " inches, target is " + Units.metersToInches(controller.getSetpoint()));
+            + " inches, target is " + Units.metersToInches(controller.getSetpoint()) + " output is " + output);
         
         drive.differentialDrive(output, 0);
     }
 
     @Override
     public void end(boolean interrupted) {
-        drive.killMotors();
+        drive.setMaxSpeed(Constants.DriveConstants.kMaxVoltage);
+        // drive.killMotors();
     }
 
     @Override
