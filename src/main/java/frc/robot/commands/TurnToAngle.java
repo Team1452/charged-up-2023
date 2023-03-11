@@ -29,7 +29,7 @@ public class TurnToAngle extends PIDCommand {
     }
 
     @Override
-    public void end(boolean interrupted) {
+    public void execute() {
         System.out.println("TurnToAngle: At " 
             + this.m_measurement.getAsDouble() 
             + " deg, setpoint is " 
@@ -39,7 +39,10 @@ public class TurnToAngle extends PIDCommand {
             + ", error is " 
             + Math.abs(m_setpoint.getAsDouble() 
                 - m_measurement.getAsDouble()));
-    
+    }
+
+    @Override
+    public void end(boolean interrupted) {
         drive.killMotors();
     }
 
@@ -52,6 +55,7 @@ public class TurnToAngle extends PIDCommand {
 
         // return getController().atSetpoint();
         // return Math.abs(getController().getPositionError()) < getController().getPositionTolerance();
-        return Utils.atSetpoint(m_controller);
+        // return Utils.atSetpoint(m_controller);
+        return false;
     }
 }

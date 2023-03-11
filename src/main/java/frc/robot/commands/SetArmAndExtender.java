@@ -10,8 +10,8 @@ public class SetArmAndExtender extends CommandBase {
 
     public SetArmAndExtender(ArmSubsystem arm, double armPercent, double extenderPercent) {
         this.arm = arm;
-        this.armPosition = armPercent * Constants.ArmConstants.ARM_ROTATION_RANGE_ROT; 
-        this.extenderPosition = extenderPercent * Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE;
+        this.armPosition = armPercent/100 * Constants.ArmConstants.ARM_ROTATION_RANGE_ROT; 
+        this.extenderPosition = extenderPercent/100 * Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE;
     }
 
     @Override
@@ -29,7 +29,7 @@ public class SetArmAndExtender extends CommandBase {
 
     @Override
     public boolean isFinished() {
-        return Math.abs(arm.getArmPosition() - armPosition) < 1
-            && Math.abs(arm.getExtenderPosition() - extenderPosition) < 1;
+        return Math.abs(arm.getArmEncoder().getPosition() - armPosition) < 1
+            && Math.abs(arm.getExtenderEncoder().getPosition() - extenderPosition) < 1;
     }
 }

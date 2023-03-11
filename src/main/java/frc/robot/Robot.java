@@ -126,7 +126,7 @@ public class Robot extends TimedRobot {
   private File balancingPointsLog;
   private FileWriter balancingPointsLogWriter;
 
-  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.035);
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.043);
 
   @Override
   public void robotInit() {
@@ -178,6 +178,7 @@ public class Robot extends TimedRobot {
   }
 
   Command auton;
+  Command turnToAngleCommand = null;
 
   @Override
   public void autonomousInit() {
@@ -278,22 +279,32 @@ public class Robot extends TimedRobot {
         .andThen(() -> drive.killMotors());
 
     SequentialCommandGroup flipAndPushBackCone = new SequentialCommandGroup(
-      new SetArmAndExtender(armSubSys, 10, armSubSys.getExtenderPosition()/Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE)
+      new SetArmAndExtender(armSubSys, 50, armSubSys.getExtenderPosition()/Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE)
         .withTimeout(2),
       new SetArmAndExtender(armSubSys, 0, armSubSys.getExtenderPosition()/Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE)
         .withTimeout(2)
     ).andThen(() -> drive.killMotors());
 
-    SequentialCommandGroup jerkClimbAndExit = new SequentialCommandGroup(
-      jerkBack,
-      new MoveDistance(2, drive)
+    // SequentialCommandGroup flipConeClimbAndBalance = new SequentialCommandGroup(
+    //   flipAndPushBackCone,
+    //   new MoveDistance(2, drive)
+    //     .withPitchExitThreshold(10)
+    //     .withTimeout(5),
+    //   new Balance(drive).withTimeout(9)
+    // ).andThen(() -> drive.holdPosition());
+
+    SequentialCommandGroup flipConeAndExitCommunityAndBackUpAndBalance = new SequentialCommandGroup(
+      flipAndPushBackCone,
+      new MoveDistance(2.5, drive)
+        .withTimeout(5),
+      new MoveDistance(-2, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive).withTimeout(9)
     ).andThen(() -> drive.holdPosition());
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());
-    auton = flipAndPushBackCone;
+    auton = flipConeAndExitCommunityAndBackUpAndBalance;
     auton.schedule();
 
 
@@ -322,7 +333,11 @@ public class Robot extends TimedRobot {
 
   MjpegServer driverServer;
   PhotonCameraWrapper pCam = new PhotonCameraWrapper();
+
   double teleopTargetAngle = 0;
+  boolean teleopTargetingAngle = false;
+
+  double lastPov = -1;
 
   @Override
   public void teleopInit() {
@@ -332,6 +347,7 @@ public class Robot extends TimedRobot {
     drive.setMaxVoltage(1);
     teleopTargetAngle = drive.getHeading();
     armSubSys.reset();
+    lastPov = joystick.getPOV();
   }
 
   @Override
@@ -360,21 +376,36 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     Pose2d pose = drive.getPoseWithVisionMeasurements();
-    System.out.println("Estimated pose: X: " + pose.getX() + ", Y: " + pose.getY() + ", yaw: " + pose.getRotation().getDegrees());
 
     double throttle = 1-(joystick.getThrottle() + 1)/2;
     
     double jx = joystick.getX();
     double jy = -joystick.getY();
     double deadzone = 0.02;
-    double speed = Math.copySign(Math.max(0, Math.abs(Math.pow(jy, 3.0)) - deadzone), jy);
-    double turn;
+    double r = -0.5;
+    double z = 16;
+    double m = 0.5;
+    double speed = Math.copySign(Math.max(0,
+      Math.abs(
+        jy > 0 ?
+        (Math.pow(jy+r, 3.0) * Math.pow(jy+r, 2.0) * z) + m :
+        (Math.pow(jy-r, 3.0) * Math.pow(jy-r, 2.0) * z) - m
+        ) - deadzone), jy);
+    double turn = Math.copySign(Math.max(0, Math.abs(
+        jx > 0 ?
+        (Math.pow(jx+r, 3.0) * Math.pow(jx+r, 2.0) * z) + m :
+        (Math.pow(jx-r, 3.0) * Math.pow(jx-r, 2.0) * z) - m
+      ) - deadzone), jx);
 
     if (turnIsAbsolute) {
-      teleopTargetAngle = teleopTargetAngle + 10 * jx;
-      turn = throttle*turnPid.calculate(teleopTargetAngle);
+      teleopTargetAngle = teleopTargetAngle + 5 * turn;
+      int pov = joystick.getPOV();
+      if (pov != -1) {
+        teleopTargetAngle = (double)pov;
+      }
+      turn = turnPid.calculate(drive.getHeading(), teleopTargetAngle);
+      System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
     } else {
-      turn = Math.copySign(Math.max(0, Math.abs(Math.pow(jx, 3.0)) - deadzone), jx);
     }
 
     drive.differentialDrive(throttle*speed, throttle*turn);
@@ -391,16 +422,6 @@ public class Robot extends TimedRobot {
       scheduledCommand.schedule();
     }
 
-    if (joystick.getRawButtonPressed(2)) {
-      // if (drive.isUsingVelocity()) {
-      //   drive.disableVelocityControl();
-      //   System.out.println("Robot: Using voltage control");
-      // } else {
-      //   drive.enableVelocityControl();
-      //   System.out.println("Robot: Using velocity control");
-      // }
-    }
-
     // Thumb button on top of joystick
     if (joystick.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
     if (joystick.getRawButtonPressed(2)) target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
@@ -415,7 +436,6 @@ public class Robot extends TimedRobot {
       // else
       //   balanceCommand.schedule();
     }
-
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
     if(controller.getRightBumper()) {
       armSubSys.changeExtenderPosition(1.2);
@@ -426,9 +446,7 @@ public class Robot extends TimedRobot {
     }
 
     armSubSys.changeArmPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
-    // System.out.println("Extender position: " + armSubSys.getArmEncoder().getPosition());
-    // System.out.println("Arm Encoder: " + armSubSys.getArmEncoder().getPosition());
-    // System.out.println("Target Arm Position: " + target);
+
     if (compressorEnabled) {
       // Calculate pressure from analog input
       // (from REV analog sensor datasheet)
@@ -475,6 +493,16 @@ public class Robot extends TimedRobot {
 
     lastAButtonStatus = controller.getAButton();
     lastBButtonStatus = controller.getBButton();
+
+    if (joystick.getRawButtonPressed(2)) {
+      // if (drive.isUsingVelocity()) {
+      //   drive.disableVelocityControl();
+      //   System.out.println("Robot: Using voltage control");
+      // } else {
+      //   drive.enableVelocityControl();
+      //   System.out.println("Robot: Using velocity control");
+      // }
+    }
 
     CommandScheduler.getInstance().run();
     target = armSubSys.update();

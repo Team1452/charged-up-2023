@@ -114,18 +114,19 @@ public class ArmSubsystem {
 
     public void changeExtenderPosition(double percentChange){
         updateSavedPositions();
-
+        if(percentChange > 0)
+            targetChoice = ArmTargetChoice.MANUAL_CONTROL;
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
-            extenderPosition += extenderScaleConstant*percentChange/100.0;
+            extenderPosition += extenderScaleConstant*percentChange*0.01;
         }
     }
 
     public void changeArmPosition(double percentChange){
         updateSavedPositions();
-
-        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
-            armPosition += armScaleConstant*percentChange/100.0;
-        }
+        if(percentChange > 0)
+            targetChoice = ArmTargetChoice.MANUAL_CONTROL;
+        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
+            armPosition += armScaleConstant*percentChange*0.01;
 
     }
 
@@ -170,15 +171,15 @@ public class ArmSubsystem {
         armY = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         armX = Math.cos(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         //if we're at the arm position then we switch back to manual control
-        if(Math.abs(armEncoder.getPosition()-armPosition)<0.1 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1 ){
+        if(Math.abs(armEncoder.getPosition()-armPosition)<0.5 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.5 ){
             out = ArmTargetChoice.MANUAL_CONTROL;
         }
 
-        setArmPosition(armPosition);
-        setExtenderPosition(extenderPosition);
 
-        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL || Math.abs(extenderEncoder.getPosition() - extenderPosition) < 0.1) {
-            System.out.println("Manual Control: Setting extender PID to " + (-extenderPosition));
+        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
+            // System.out.println("Manual Control: Setting extender PID to " + (-extenderPosition));
+            setExtenderPosition(extenderPosition);
+            setArmPosition(armPosition);
         }
 
         return out;
@@ -200,9 +201,11 @@ public class ArmSubsystem {
     public double getArmDistance(){
         return armX;
     }
+
     public double getExtenderPosition(){
         return extenderPosition;
     }
+
     public double getArmPosition(){
         return armPosition;
     }

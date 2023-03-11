@@ -34,7 +34,7 @@ public class Constants {
         public static double kControlTurnI = 0.00003;
         public static double kControlTurnD = 0.0001;
 
-        public static double kTurnP = 0.004;
+        public static double kTurnP = 0.04;
         public static double kTurnI = 0.0001;
         public static double kTurnD = 0.001;
         public static final double kTurnAngleToleranceDegrees = 1;
