@@ -110,20 +110,20 @@ public class ArmSubsystem {
 
     public void changeExtenderPosition(double percentChange){
         updateSavedPositions();
-
-
+        if(percentChange > 0)
+            targetChoice = ArmTargetChoice.MANUAL_CONTROL;
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
-            extenderPosition += extenderScaleConstant*(Math.pow(percentChange*0.01, 3));
+            extenderPosition += extenderScaleConstant*percentChange*0.01;
         }
 
     }
 
     public void changeArmPosition(double percentChange){
         updateSavedPositions();
-
-        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
+        if(percentChange > 0)
+            targetChoice = ArmTargetChoice.MANUAL_CONTROL;
+        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
             armPosition += armScaleConstant*percentChange*0.01;
-        }
 
     }
 
@@ -168,7 +168,7 @@ public class ArmSubsystem {
         armY = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         armX = Math.cos(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         //if we're at the arm position then we switch back to manual control
-        if(Math.abs(armEncoder.getPosition()-armPosition)<0.1 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1 ){
+        if(Math.abs(armEncoder.getPosition()-armPosition)<0.5 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.5 ){
             out = ArmTargetChoice.MANUAL_CONTROL;
         }
         armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
@@ -177,8 +177,7 @@ public class ArmSubsystem {
 
         extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,
             Math.min(extenderPosition, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS));
-        if(targetChoice == ArmTargetChoice.MANUAL_CONTROL || Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.1)
-            extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
+        extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
 
         return out;
     }
