@@ -22,20 +22,26 @@ public class MoveDistance extends CommandBase {
      * 
      */
 
-    public MoveDistance(double distanceMeters, DriveSubsystem drive, double pitchExitThreshold) {
+    public MoveDistance(double distanceMeters, DriveSubsystem drive) {
         this.controller = new PIDController(DriveConstants.kMoveP, DriveConstants.kMoveI, DriveConstants.kMoveD);
 
         this.drive = drive;
         this.distanceMeters = distanceMeters * 39.25/6; // Temp empirical scaling factor
 
-        this.pitchExitThreshold = pitchExitThreshold;
+        this.pitchExitThreshold = Double.MAX_VALUE;
 
         this.controller
             .setTolerance(DriveConstants.kMoveToleranceMeters); // TODO: Move to constants
     }
 
-    public MoveDistance(double distanceMeters, DriveSubsystem drive) {
-        this(distanceMeters, drive, Double.MAX_VALUE);
+    public MoveDistance withPitchExitThreshold(double degrees) {
+        this.pitchExitThreshold = degrees;
+        return this;
+    }
+
+    public MoveDistance withCustomGains(double kP, double kI, double kD) {
+        this.controller.setPID(kP, kI, kD);
+        return this;
     }
 
     @Override

@@ -252,7 +252,9 @@ public class Robot extends TimedRobot {
 
     var straightBalancingSequence = new SequentialCommandGroup(
         new MoveDistance(10.517001824211251, drive).withTimeout(3.5),
-        new MoveDistance(-8.1151787916318057, drive, 6).withTimeout(3.5),
+        new MoveDistance(-8.1151787916318057, drive)
+          .withPitchExitThreshold(6)
+          .withTimeout(3.5),
         new Balance(drive)
     );
 
@@ -264,13 +266,24 @@ public class Robot extends TimedRobot {
       new MoveDistance(3.5, drive)
     );
 
-    SequentialCommandGroup climbAndExit = new SequentialCommandGroup(
-      new MoveDistance(5, drive, 10).withTimeout(5),
+    Command jerkBack = new MoveDistance(-Units.inchesToMeters(12), drive)
+        .withCustomGains(0.2, 0, 0)
+        .withTimeout(1);
+
+
+    SequentialCommandGroup jerkClimbAndExit = new SequentialCommandGroup(
+      jerkBack,
+      new MoveDistance(-Units.inchesToMeters(12), drive)
+        .withCustomGains(0.2, 0, 0)
+        .withTimeout(1),
+      new MoveDistance(5, drive)
+        .withPitchExitThreshold(10)
+        .withTimeout(5),
       new Balance(drive).withTimeout(9)
     ).andThen(() -> drive.holdPosition());
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());
-    auton = climbAndExit;
+    auton = jerkBack;
     auton.schedule();
 
 
@@ -303,6 +316,7 @@ public class Robot extends TimedRobot {
   public void teleopInit() {
     drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kBrake);
+    targetAngle = drive.getHeading();
     armSubSys.reset();
   }
 
@@ -326,21 +340,25 @@ public class Robot extends TimedRobot {
   double scalefac = 1;
 
   Command scheduledCommand = null;
+  double targetAngle = 0;
 
   @Override
   public void teleopPeriodic() {
     Pose2d pose = drive.getPoseWithVisionMeasurements();
     System.out.println("Estimated pose: X: " + pose.getX() + ", Y: " + pose.getY() + ", yaw: " + pose.getRotation().getDegrees());
 
-    double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
+    double throttle = 1-(joystick.getThrottle() + 1)/2;
     
-    double speed = -joystick.getY();
-    double turn = joystick.getX();
+    double jx = joystick.getX();
+    double jy = -joystick.getY();
     
-    speed = Math.copySign(Math.max(0, Math.abs(Math.pow(speed, 3.0)) - 0.05), speed);
-    turn = Math.copySign(Math.max(0, Math.abs(Math.pow(turn, 3.0)) - 0.05), turn);
-    
-    drive.differentialDrive(speed*joystickThrottle, turn*joystickThrottle);
+    double speed = Math.copySign(Math.max(0, Math.abs(Math.pow(jy, 3.0)) - 0.05), jy);
+    // double turn = Math.copySign(Math.max(0, Math.abs(Math.pow(jx, 3.0)) - 0.05), jx);
+
+    double targetAngle = targetAngle + 10 * jx;
+    double turn = throttle*turnPid.calculate(targetAngle);
+
+    drive.differentialDrive(throttle*speed, throttle*turn);
 
     if (controller.getXButtonPressed()) {
       if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
