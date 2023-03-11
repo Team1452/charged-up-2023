@@ -71,7 +71,7 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public void killMotors() {
-    disableVelocityControl();
+    disablePIDControl();
 
     for (CANSparkMax motor : leftMotors) {
       motor.set(0);
@@ -106,7 +106,7 @@ public class DriveSubsystem extends SubsystemBase {
     }
   }
 
-  public void disableVelocityControl() {
+  public void disablePIDControl() {
     usingVelocity = false;
 
     for (CANSparkMax motor : leftMotors) {
@@ -120,6 +120,23 @@ public class DriveSubsystem extends SubsystemBase {
       controller.setP(0);
       controller.setI(0);
       controller.setD(0);
+    }
+  }
+
+  public void holdPosition() {
+    for (CANSparkMax motor : leftMotors) {
+      SparkMaxPIDController controller = motor.getPIDController();
+      controller.setP(0.01);
+      controller.setI(0);
+      controller.setD(0);
+      controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
+    }
+    for (CANSparkMax motor : rightMotors) {
+      SparkMaxPIDController controller = motor.getPIDController();
+      controller.setP(0.01);
+      controller.setI(0);
+      controller.setD(0);
+      controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
     }
   }
 

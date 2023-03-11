@@ -6,24 +6,25 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkMaxPIDController;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants.FieldConstants;
 public class ArmSubsystem {
 
     public enum ArmTargetChoice {
-
         MANUAL_CONTROL,
         LEVEL_TWO_POLE,
         LEVEL_TWO_PLATFORM,
         LEVEL_THREE_POLE,
         LEVEL_THREE_PLATFORM,
     }
+
     private ArmTargetChoice targetChoice = ArmTargetChoice.MANUAL_CONTROL;
     private CANSparkMax arm;
     private CANSparkMax extender; 
 
     double armPosition = 0;
-    double extenderPosition = 0;
+    public double extenderPosition = 0;
 
     double oldArmPosition;
     double oldExtenderPosition;
@@ -63,7 +64,7 @@ public class ArmSubsystem {
         armPID = arm.getPIDController();
         extenderPID = extender.getPIDController();
         //Set gains in robotInit
-        extenderPosition =  extenderEncoder.getPosition();
+        extenderPosition = extenderEncoder.getPosition();
         armPosition = armEncoder.getPosition();
 
         oldExtenderPosition = extenderPosition;
@@ -115,7 +116,6 @@ public class ArmSubsystem {
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             extenderPosition += extenderScaleConstant*percentChange*0.01;
         }
-
     }
 
     public void changeArmPosition(double percentChange){
@@ -173,6 +173,7 @@ public class ArmSubsystem {
         }
         armPosition = Math.max(Constants.ArmConstants.MIN_ROTATION_ROT,
             Math.min(armPosition, Constants.ArmConstants.MAX_ROTATION_ROT));
+        
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
 
         extenderPosition = Math.max(Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS,

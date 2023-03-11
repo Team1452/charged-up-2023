@@ -70,6 +70,7 @@ import frc.robot.ArmSubsystem.ArmTargetChoice;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.TurnToAngle;
+import frc.robot.util.EditableParameter;
 import kotlin.UByteArrayKt;
 import frc.robot.commands.CenterPhotonVisionTarget;
 
@@ -110,9 +111,12 @@ public class Robot extends TimedRobot {
     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE
   };
 
-  private ShuffleboardTab tab = Shuffleboard.getTab(String.format("Pt. H %.4f", Math.random()));
+  private static ShuffleboardTab tab = Shuffleboard.getTab(String.format("Pt. H %.4f", Math.random()));
+
+  private PIDController turnPid = new PIDController(Constants.DriveConstants.kControlTurnP, Constants.DriveConstants.kControlTurnI, Constants.DriveConstants.kControlTurnD);
 
   private GenericEntry kBalanceP, kBalanceI, kBalanceD;
+  private GenericEntry kTurnP, kTurnI, kTurnD;
   private GenericEntry kMaxSpeed, kMaxVoltage;
 
   private Balance balanceCommand;
@@ -120,8 +124,12 @@ public class Robot extends TimedRobot {
   private File balancingPointsLog;
   private FileWriter balancingPointsLogWriter;
 
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.035);
+
   @Override
   public void robotInit() {
+    turnPid.enableContinuousInput(-180, 180);
+
     try {
       LocalTime time = LocalTime.now();
       balancingPointsLog = new File(String.format("/home/lvuser/custom/point_%d:%d:%d_%s.csv", (time.getHour() + 1) % 12, time.getMinute(), time.getSecond(), time.getHour() > 11 ? "PM" : "AM"));
@@ -137,19 +145,33 @@ public class Robot extends TimedRobot {
     kBalanceP = tab.add("kBalanceP", Constants.DriveConstants.kBalanceP).getEntry();
     kBalanceI = tab.add("kBalanceI", Constants.DriveConstants.kBalanceI).getEntry();
     kBalanceD = tab.add("kBalanceD", Constants.DriveConstants.kBalanceD).getEntry();
+    kTurnP = tab.add("kTurnP", turnPid.getP()).getEntry();
+    kTurnI = tab.add("kTurnI", turnPid.getI()).getEntry();
+    kTurnD = tab.add("kTurnD", turnPid.getD()).getEntry();
     kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
-    kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
+    // kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
+    kMaxVoltage = tab.add("kMaxVoltage", 0.2).getEntry();
 
     compressor.disable();
   }
 
   @Override
   public void robotPeriodic() {
+    drive.updateOdometry();
+
     Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
     Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
     Constants.DriveConstants.kBalanceD = kBalanceD.getDouble(0);
+
+    turnPid.setP(kTurnP.getDouble(0));
+    turnPid.setI(kTurnI.getDouble(0));
+    turnPid.setD(kTurnD.getDouble(0));
+
     drive.setMaxVoltage(kMaxVoltage.getDouble(0));
     drive.setMaxSpeed(kMaxSpeed.getDouble(0));
+
+    Pose2d pose = drive.getPoseWithVisionMeasurements();
+
     tick += 1;
   }
 
@@ -166,7 +188,7 @@ public class Robot extends TimedRobot {
     drive.setIdleMode(IdleMode.kBrake);
     // drive.resetPosition(new Pose2d(10, 0, Rotation2d.fromDegrees(-180)));
     drive.resetPositionOdometry();
-    drive.disableVelocityControl();
+    drive.disablePIDControl();
 
     Command rotateAngles = new SequentialCommandGroup(
       new TurnToAngle(90, drive),
@@ -242,11 +264,18 @@ public class Robot extends TimedRobot {
       new MoveDistance(3.5, drive)
     );
 
-    // auton = straightBalancingSequence;
-    // auton.schedule();
+    SequentialCommandGroup climbAndExit = new SequentialCommandGroup(
+      new MoveDistance(5, drive, 10).withTimeout(5),
+      new Balance(drive).withTimeout(9)
+    ).andThen(() -> drive.holdPosition());
+
+    // auton = new Balance(drive).andThen(() -> drive.holdPosition());
+    auton = climbAndExit;
+    auton.schedule();
+
 
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
-
+    drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
     // new CenterPhotonVisionTarget(drive).schedule();
   }
 
@@ -265,15 +294,14 @@ public class Robot extends TimedRobot {
     System.out.println("Setting idle mode");
     drive.setIdleMode(IdleMode.kCoast);
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
-    // auton.cancel(); // Cancel if auton didn't terminate properly
-    
+    if (auton != null) auton.cancel(); // Cancel if auton didn't terminate properly
   }
 
   MjpegServer driverServer;
   PhotonCameraWrapper pCam = new PhotonCameraWrapper();
   @Override
   public void teleopInit() {
-    drive.disableVelocityControl();
+    drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kBrake);
     armSubSys.reset();
   }
@@ -296,23 +324,35 @@ public class Robot extends TimedRobot {
 
   boolean loggingPoints = false;
   double scalefac = 1;
-  Pose2d prevPose = new Pose2d();
+
+  Command scheduledCommand = null;
+
   @Override
   public void teleopPeriodic() {
-    prevPose = pCam.getEstimatedGlobalPose(prevPose).map(x -> x.estimatedPose.toPose2d()).get();
-    System.out.println("X: " + prevPose.getX() + "Y: " + prevPose.getY());
+    Pose2d pose = drive.getPoseWithVisionMeasurements();
+    System.out.println("Estimated pose: X: " + pose.getX() + ", Y: " + pose.getY() + ", yaw: " + pose.getRotation().getDegrees());
 
-
-    scalefac = 1-(joystick.getThrottle() + 1)/2;
-    if(joystick.getTrigger())
-      scalefac *= 0.2; //TODO Tune this to driver pref
-
-    double speed = (-Math.pow(joystick.getY(), 3)*scalefac);
-    double turn = (Math.pow(joystick.getX(), 3)*scalefac);
+    double joystickThrottle = 1-(joystick.getThrottle() + 1)/2;
+    
+    double speed = -joystick.getY();
+    double turn = joystick.getX();
+    
     speed = Math.copySign(Math.max(0, Math.abs(Math.pow(speed, 3.0)) - 0.05), speed);
     turn = Math.copySign(Math.max(0, Math.abs(Math.pow(turn, 3.0)) - 0.05), turn);
-    drive.differentialDrive(speed, turn);
+    
+    drive.differentialDrive(speed*joystickThrottle, turn*joystickThrottle);
 
+    if (controller.getXButtonPressed()) {
+      if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
+
+      scheduledCommand = new SequentialCommandGroup(
+        new TurnToAngle(90, drive),
+        new MoveDistance(1, drive),
+        new TurnToAngle(0, drive)
+      );
+
+      scheduledCommand.schedule();
+    }
 
 
     // Thumb button on top of joystick
@@ -321,6 +361,7 @@ public class Robot extends TimedRobot {
     if (joystick.getRawButtonPressed(12)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
     if (joystick.getRawButtonPressed(9)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
     if (joystick.getRawButtonPressed(11)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+    //armSubSys.setTargetMode(target);
     if(controller.getRawButton(6)) {
       // if (balanceCommand.isScheduled())
       //   balanceCommand.cancel();
@@ -328,10 +369,13 @@ public class Robot extends TimedRobot {
       //   balanceCommand.schedule();
     }
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
-    if(controller.getRightBumper())
-      armSubSys.changeExtenderPosition(1.2); //TODO: Tune to driver preference
-    if(controller.getLeftBumper())
+    if(controller.getRightBumper()) {
+      armSubSys.changeExtenderPosition(1.2);
+    }
+
+    if(controller.getLeftBumper()) {
       armSubSys.changeExtenderPosition(-1.2);
+    }
 
     armSubSys.changeArmPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
 
@@ -401,63 +445,52 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testInit() {
-    armSubSys.setIdleMode(CANSparkMax.IdleMode.kCoast);
-    leftSolenoid.set(Value.kOff); // Off by default
-    rightSolenoid.set(Value.kOff);
   }
 
+  boolean needsToFaceFront = false;
+
+  double lastSetAngle = 0;
 
   @Override
   public void testPeriodic() {
-    
-    // double pov = joystick.getPOV();
+    double throttle = 1-(joystick.getThrottle() + 1)/2;
+    double x = joystick.getX();
+    double y = -joystick.getY(); // Forward is negative on joystick
 
-    // System.out.println("throttle: " + joystickThrottle + "; trigger: " + joystickTrigger + "; pov: " + pov);
+    x = Math.copySign(Math.max(Math.abs(x) - 0.1, 0), x);
+    y = Math.copySign(Math.max(Math.abs(y) - 0.1, 0), y);
 
-    // DRIVE
+    double speed = Math.hypot(x, y);
+    speed = Math.copySign(Math.pow(speed, 3), speed);
 
-    // Controller forward is negative
-    double joystickThrottle = joystick.getThrottle();
-    boolean joystickTrigger = joystick.getTrigger();
-    double speed = Math.pow(-controller.getRightY(), 3.0);
-    double turn = Math.pow(controller.getRightX(), 3.0);
+    double targetAngle = -Math.toDegrees(Math.atan2(y, x));
+    double currentAngle = drive.getHeading();
 
-    drive.differentialDrive(speed, -turn);
-
-    armSubSys.changeExtenderPosition(controller.getLeftTriggerAxis()-controller.getRightTriggerAxis());
-    // System.out.println("Arm position: " + armSubSys.getArmEncoder().getPosition());
-
-    // COMPRESSOR
-    if (compressorEnabled) {
-      // Calculate pressure from analog input
-      // (from REV analog sensor datasheet)
-      double vOut = pressureSensor.getAverageVoltage();
-      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 25;
-
-
-    if (controller.getAButtonPressed()) {
-      compressorEnabled = !compressorEnabled;
-      if (compressorEnabled) {
-        System.out.println("COMPRESSOR IS NOW ENABLED");
-      } else {
-        System.out.println("COMPRESSOR IS NOW DISABLED");
-      }
+    if (Math.abs(targetAngle - lastSetAngle) > 10) {
+      turnPid.reset();
     }
 
-    // PISTON
-    if (controller.getYButtonPressed()) {
-      pistonForward = !pistonForward;
-      System.out.println("Enabling solenoid: " + pistonForward);
-      if (pistonForward) {
-        leftSolenoid.set(Value.kReverse);
-        rightSolenoid.set(Value.kForward);
-      } else {
-        leftSolenoid.set(Value.kForward);
-        rightSolenoid.set(Value.kReverse);
-      }
+    if (Math.abs(x) < 1e-6 && Math.abs(y) < 1e-6) {
+      speed = 0;
+      targetAngle = lastSetAngle;
     }
 
+    lastSetAngle = targetAngle;
 
-     }
-     }
+    double turn = turnPid.calculate(currentAngle, targetAngle);
+
+    if (joystick.getRawButtonPressed(2)) {
+      needsToFaceFront = !needsToFaceFront;
+    }
+
+    if (joystick.getTrigger()) {
+      speed = speed * 0.1;
+    } else {
+      speed = 0;
+    }
+
+    System.out.printf("Current angle: %.3f. Target angle: %.3f\n", currentAngle, targetAngle);
+
+    drive.differentialDrive(speed, throttle * turn);
+  }
 }
