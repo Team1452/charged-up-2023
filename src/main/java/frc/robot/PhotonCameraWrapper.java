@@ -31,7 +31,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
-import org.apache.commons.collections4.list.TreeList;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
@@ -39,7 +38,6 @@ import org.photonvision.PhotonPoseEstimator.PoseStrategy;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
-import com.fasterxml.jackson.core.JsonParser;
 
 
 public class PhotonCameraWrapper {
@@ -60,15 +58,6 @@ public class PhotonCameraWrapper {
          * Coodinate system considers (0, 0, 0)
          *  as center of the field on ground
          */
-        File currentDirFile = new File("");
-        String dir = currentDirFile.getAbsolutePath() + "\\apriltag_poses.json"; 
-        Scanner reader = null;
-        try {
-                reader = new Scanner(new File(dir));
-        } catch (FileNotFoundException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-        }
         /*
         double size = 152.4; //in mm
         Stream<Object> ids = reader.findAll(Pattern.compile("(?:\"id\"\\s*:\\s*)\\w+")).map(x -> x.toString());
@@ -104,13 +93,13 @@ public class PhotonCameraWrapper {
                                         FieldConstants.width / 2.0,
                                         Rotation2d.fromDegrees(180))));
         ArrayList<AprilTag> atList = new ArrayList<AprilTag>();
-                //new AprilTagFieldLayout(tagList, FieldConstants.length, FieldConstants.width);
-                AprilTagFieldLayout atfl = null;
-                try {
-                        atfl = new AprilTagFieldLayout(AprilTagFields.k2023ChargedUp.m_resourceFile);
-                } catch (IOException e) {
-                        e.printStackTrace();
-                }
+        //new AprilTagFieldLayout(tagList, FieldConstants.length, FieldConstants.width);
+        AprilTagFieldLayout atfl = null;
+        try {
+                atfl = new AprilTagFieldLayout(AprilTagFields.k2023ChargedUp.m_resourceFile);
+        } catch (IOException e) {
+                e.printStackTrace();
+        }
 
         // Forward Camera
         Timer timer = new Timer();

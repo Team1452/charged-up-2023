@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.util.Utils;
+import frc.robot.Constants;
 import frc.robot.DriveSubsystem;
 
 // TODO: Migrate this to PIDCommand()
@@ -14,6 +15,7 @@ public class MoveDistance extends CommandBase {
     double distanceMeters;
     PIDController controller;
     double pitchExitThreshold;
+    double msElapsedSinceMetPitch = 0;
 
     /*
      * 39.25" -> 6"
@@ -64,6 +66,10 @@ public class MoveDistance extends CommandBase {
         // No idea why? TODO: Figure out why
 
         if (Math.abs(drive.getPitch()) > pitchExitThreshold) {
+            msElapsedSinceMetPitch += Constants.PERIOD_MS;
+        }
+
+        if (msElapsedSinceMetPitch > 500) {
             return true;
         }
 
