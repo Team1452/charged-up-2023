@@ -367,7 +367,7 @@ public class Robot extends TimedRobot {
   boolean lastBButtonStatus = false;
 
   boolean loggingPoints = false;
-  double scalefac = 1;
+  double scaleFactor = 1;
 
   Command scheduledCommand = null;
 
@@ -379,23 +379,34 @@ public class Robot extends TimedRobot {
 
     double throttle = 1-(joystick.getThrottle() + 1)/2;
     
-    double jx = joystick.getX();
-    double jy = -joystick.getY();
-    double deadzone = 0.02;
-    double r = -0.5;
+    double jx = controller.getLeftX();
+    double jy = -controller.getRightY();
+    double deadzone = 0.05;
+    double r = 0.5;
     double z = 16;
     double m = 0.5;
-    double speed = Math.copySign(Math.max(0,
+    
+    r = Math.copySign(r, jy);
+    m = Math.copySign(m, jy);
+
+    double speed = -Math.copySign(Math.max(0,
       Math.abs(
-        jy > 0 ?
-        (Math.pow(jy+r, 3.0) * Math.pow(jy+r, 2.0) * z) + m :
-        (Math.pow(jy-r, 3.0) * Math.pow(jy-r, 2.0) * z) - m
-        ) - deadzone), jy);
-    double turn = Math.copySign(Math.max(0, Math.abs(
+        jy > 0
+          ? ((Math.pow(jy-r, 3.0) * Math.pow(jy-r, 2.0) * z) + m)
+          : ((Math.pow(jy+r, 3.0) * Math.pow(jy+r, 2.0) * z) - m)
+          ) - deadzone),
+      jy);
+
+    r = Math.copySign(r, jx);
+    m = Math.copySign(m, jx);
+
+    double turn = -Math.copySign(Math.max(0, Math.abs(
         jx > 0 ?
-        (Math.pow(jx+r, 3.0) * Math.pow(jx+r, 2.0) * z) + m :
-        (Math.pow(jx-r, 3.0) * Math.pow(jx-r, 2.0) * z) - m
+        ((Math.pow(jx-r, 3.0) * Math.pow(jx-r, 2.0) * z) + m) :
+        ((Math.pow(jx+r, 3.0) * Math.pow(jx+r, 2.0) * z) - m)
       ) - deadzone), jx);
+
+    System.out.print("Speed: " + jy + " Turn: " + jx);
 
     if (turnIsAbsolute) {
       teleopTargetAngle = teleopTargetAngle + 5 * turn;
@@ -405,10 +416,9 @@ public class Robot extends TimedRobot {
       }
       turn = turnPid.calculate(drive.getHeading(), teleopTargetAngle);
       System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
-    } else {
     }
 
-    drive.differentialDrive(throttle*speed, throttle*turn);
+    drive.differentialDrive(scaleFactor*speed, scaleFactor*turn);
 
     if (controller.getXButtonPressed()) {
       if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
