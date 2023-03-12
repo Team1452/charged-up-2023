@@ -84,6 +84,8 @@ public class Robot extends TimedRobot {
 
   private final Compressor compressor = new Compressor(0, PneumaticsModuleType.CTREPCM);
 
+  private final CANSparkMax intake = new CANSparkMax(RobotMap.INTAKE, MotorType.kBrushed);
+
   // COUNTERCLOCKWISE is positive
 
   private final SlewRateLimiter extenderSlewLimiter = new SlewRateLimiter(1, -1, 0);
@@ -136,12 +138,15 @@ public class Robot extends TimedRobot {
   public static EditableParameter m = new EditableParameter(tab, "m", .3);
 
   public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.05);
-  public static EditableParameter r1 = new EditableParameter(tab, "r1", 0.45);
-  public static EditableParameter z1 = new EditableParameter(tab, "z1", 16);
-  public static EditableParameter m1 = new EditableParameter(tab, "m1", .3);
+  public static EditableParameter r1 = new EditableParameter(tab, "r1", 0.33);
+  public static EditableParameter z1 = new EditableParameter(tab, "z1", 12);
+  public static EditableParameter m1 = new EditableParameter(tab, "m1", .05);
+
+  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.1);
 
   @Override
   public void robotInit() {
+    intake.setSmartCurrentLimit(Constants.CurrentLimits.INTAKE_LIMIT);
     turnPid.enableContinuousInput(-180, 180);
 
     try {
@@ -387,10 +392,19 @@ public class Robot extends TimedRobot {
 
   private double velocityCurve(double x, double deadzone, double r, double z, double m) {
     double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
-    double value = (Math.pow(mag - r, 5) * z) + m;
+    double value = (x <= 0.1 && x > 0 
+    ? 0.02
+      : x <= 0.2 && x > 0
+      ? 3*x-0.3 
+      : Math.pow(mag - r, 5) * z) + m;
     return Math.copySign(value, x);
   }
 
+  private double turnCurve(double x, double deadzone, double r, double z, double m) {
+    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
+    double value = (Math.pow(mag * 0.9 - r, 5) * z) + m;
+    return Math.copySign(value, x);
+  }
   // private double turningCurve(double x, double deadzone, double r, double z, double m, double b) {
   //   double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
   //   double value = -(((Math.pow(-mag * b, 5.0) * z) + Math.pow(-mag * b + r, 4) * z + Math.pow(-mag * b + r, 3.0) * z + m));
@@ -415,7 +429,7 @@ public class Robot extends TimedRobot {
     double z1Value = z1.getValue();
     double m1Value = m1.getValue();
     double turnDeadzoneValue = turnDeadzone.getValue();
-
+    double c = 0.9;
     double speed = velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
     
     double turn;
@@ -423,7 +437,7 @@ public class Robot extends TimedRobot {
     if (Math.abs(speed) < turnIsLinearThreshold.getValue()) {
       turn = jx;
     } else {
-      turn = velocityCurve(jx, turnDeadzoneValue, r1Value, z1Value, m1Value);
+      turn = turnCurve(jx, turnDeadzoneValue, r1Value, z1Value, m1Value);
     }
     
     if (turnIsAbsolute) {
@@ -437,9 +451,9 @@ public class Robot extends TimedRobot {
     }
 
     if(controller.getLeftStickButton())
-      speed = jy ==0 ? 0 : Math.copySign(0.2, jy);
+      speed = jx ==0 ? 0 : Math.copySign(0.05, jx);
     if(controller.getRightStickButton())
-      turn = jx ==0 ? 0 : Math.copySign(0.2, jx);
+      turn = jy ==0 ? 0 : Math.copySign(0.05, jy);
     drive.differentialDrive(speed, turn);
 
     if (controller.getXButtonPressed()) {
@@ -509,19 +523,28 @@ public class Robot extends TimedRobot {
     }
 
 
-    // PISTON
-    if (!lastBButtonStatus && controller.getBButtonPressed()) {
-      pistonForward = !pistonForward;
-      if (pistonForward) {
-        System.out.println("CLOSING PISTON");
-        leftSolenoid.set(Value.kReverse);
-        rightSolenoid.set(Value.kForward);
-      } else {
-        System.out.println("OPENING PISTON");
-        leftSolenoid.set(Value.kForward);
-        rightSolenoid.set(Value.kReverse);
-      }
+    // Intake    
+    if (controller.getYButton()) {
+      intake.set(intakeSpeed.getValue());
+    } else if (controller.getAButton()) {
+      intake.set(-intakeSpeed.getValue());
+    } else {
+      intake.set(0);
     }
+
+    // PISTON
+    // if (!lastBButtonStatus && controller.getBButtonPressed()) {
+    //   pistonForward = !pistonForward;
+    //   if (pistonForward) {
+    //     System.out.println("CLOSING PISTON");
+    //     leftSolenoid.set(Value.kReverse);
+    //     rightSolenoid.set(Value.kForward);
+    //   } else {
+    //     System.out.println("OPENING PISTON");
+    //     leftSolenoid.set(Value.kForward);
+    //     rightSolenoid.set(Value.kReverse);
+    //   }
+    // }
 
     lastAButtonStatus = controller.getAButton();
     lastBButtonStatus = controller.getBButton();

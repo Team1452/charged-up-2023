@@ -8,6 +8,10 @@ import edu.wpi.first.math.util.Units;
 public class Constants {
     public static final double PERIOD_MS = 20;    
 
+    public static class CurrentLimits {
+        public static int INTAKE_LIMIT = 35;
+    }
+
     public static class DriveConstants {
         public static double kMaxVoltage = 0.8;
         public static final double kMaxDriveVoltage = 1.0;
