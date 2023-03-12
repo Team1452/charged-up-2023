@@ -128,6 +128,18 @@ public class Robot extends TimedRobot {
 
   public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.043);
 
+  public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.1);
+
+  public static EditableParameter speedDeadzone = new EditableParameter(tab, "Speed Deadzone", 0.05);
+  public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
+  public static EditableParameter z = new EditableParameter(tab, "z", 16);
+  public static EditableParameter m = new EditableParameter(tab, "m", .3);
+
+  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.05);
+  public static EditableParameter r1 = new EditableParameter(tab, "r1", 0.45);
+  public static EditableParameter z1 = new EditableParameter(tab, "z1", 16);
+  public static EditableParameter m1 = new EditableParameter(tab, "m1", .3);
+
   @Override
   public void robotInit() {
     turnPid.enableContinuousInput(-180, 180);
@@ -152,7 +164,7 @@ public class Robot extends TimedRobot {
     kTurnD = tab.add("kTurnD", turnPid.getD()).getEntry();
     kMaxSpeed = tab.add("kMaxSpeed", Constants.DriveConstants.kMaxSpeed).getEntry();
     // kMaxVoltage = tab.add("kMaxVoltage", Constants.DriveConstants.kMaxVoltage).getEntry();
-    kMaxVoltage = tab.add("kMaxVoltage", 0.35).getEntry();
+    kMaxVoltage = tab.add("kMaxVoltage", 1.0).getEntry();
 
     compressor.disable();
   }
@@ -373,6 +385,18 @@ public class Robot extends TimedRobot {
 
   boolean turnIsAbsolute = false;
 
+  private double velocityCurve(double x, double deadzone, double r, double z, double m) {
+    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
+    double value = (Math.pow(mag - r, 5) * z) + m;
+    return Math.copySign(value, x);
+  }
+
+  // private double turningCurve(double x, double deadzone, double r, double z, double m, double b) {
+  //   double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
+  //   double value = -(((Math.pow(-mag * b, 5.0) * z) + Math.pow(-mag * b + r, 4) * z + Math.pow(-mag * b + r, 3.0) * z + m));
+  //   return Math.copySign(value, x);
+  // }
+
   @Override
   public void teleopPeriodic() {
     Pose2d pose = drive.getPoseWithVisionMeasurements();
@@ -381,33 +405,27 @@ public class Robot extends TimedRobot {
     
     double jx = controller.getLeftX();
     double jy = -controller.getRightY();
-    double deadzone = 0.05;
-    double r = 0.5;
-    double z = 16;
-    double m = 0.5;
+
+    double rValue = r.getValue();
+    double zValue = z.getValue();
+    double mValue = m.getValue();
+    double speedDeadzoneValue = speedDeadzone.getValue();
+
+    double r1Value = r1.getValue();
+    double z1Value = z1.getValue();
+    double m1Value = m1.getValue();
+    double turnDeadzoneValue = turnDeadzone.getValue();
+
+    double speed = velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
     
-    r = Math.copySign(r, jy);
-    m = Math.copySign(m, jy);
+    double turn;
 
-    double speed = -Math.copySign(Math.max(0,
-      Math.abs(
-        jy > 0
-          ? ((Math.pow(jy-r, 3.0) * Math.pow(jy-r, 2.0) * z) + m)
-          : ((Math.pow(jy+r, 3.0) * Math.pow(jy+r, 2.0) * z) - m)
-          ) - deadzone),
-      jy);
-
-    r = Math.copySign(r, jx);
-    m = Math.copySign(m, jx);
-
-    double turn = -Math.copySign(Math.max(0, Math.abs(
-        jx > 0 ?
-        ((Math.pow(jx-r, 3.0) * Math.pow(jx-r, 2.0) * z) + m) :
-        ((Math.pow(jx+r, 3.0) * Math.pow(jx+r, 2.0) * z) - m)
-      ) - deadzone), jx);
-
-    System.out.print("Speed: " + jy + " Turn: " + jx);
-
+    if (Math.abs(speed) < turnIsLinearThreshold.getValue()) {
+      turn = jx;
+    } else {
+      turn = velocityCurve(jx, turnDeadzoneValue, r1Value, z1Value, m1Value);
+    }
+    
     if (turnIsAbsolute) {
       teleopTargetAngle = teleopTargetAngle + 5 * turn;
       int pov = joystick.getPOV();
@@ -418,7 +436,11 @@ public class Robot extends TimedRobot {
       System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
     }
 
-    drive.differentialDrive(scaleFactor*speed, scaleFactor*turn);
+    if(controller.getLeftStickButton())
+      speed = jy ==0 ? 0 : Math.copySign(0.2, jy);
+    if(controller.getRightStickButton())
+      turn = jx ==0 ? 0 : Math.copySign(0.2, jx);
+    drive.differentialDrive(speed, turn);
 
     if (controller.getXButtonPressed()) {
       if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();

@@ -198,14 +198,17 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   private void setWithLimit(MotorController controller, double value) {
-    double limitedValue = Math.signum(value) * Math.min(Math.abs(value), maxVoltage);
+    double limitedValue = Math.copySign(Math.min(Math.abs(value), maxVoltage), value);
+    System.out.printf("Setting to %.3f; ", limitedValue);
     controller.set(limitedValue);
   }
 
   private void differentialDriveVoltage(double speed, double turn) {
     // Positive turn turns right, negative turns left
+    System.out.printf("DriveSubsystem: Max voltage is " + maxVoltage + "; ");
     setWithLimit(left, speed + turn);
     setWithLimit(right, speed - turn);
+    System.out.println();
   }
 
   public double getMaxSpeed() {
