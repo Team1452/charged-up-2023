@@ -41,8 +41,9 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 
 
 public class PhotonCameraWrapper {
-    public PhotonCamera photonCamera;
-    public PhotonPoseEstimator photonPoseEstimator;
+    public PhotonCamera leftCamera, rightCamera;
+
+    public PhotonPoseEstimator leftPhotonPoseEstimator, rightPhotonPoseEstimator;
 
     TimerTask task;
 

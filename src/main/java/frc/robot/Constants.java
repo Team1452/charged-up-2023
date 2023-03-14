@@ -63,6 +63,10 @@ public class Constants {
         public static double HIGH_CUBE_NODE_EXTENDER_ROTATIONS = 29.64;
         public static double HIGH_CUBE_NODE_ARM_ANGLE = 71.36;
 
+        public static double DRIVER_STATION_EXTENDER_ROTATIONS = 29.64;
+        public static double DRIVER_STATION_ARM_ANGLE = 73.54;
+
+
         /*
         low goal:
             cone:
@@ -160,6 +164,21 @@ public class Constants {
                         new Rotation3d(
                                 0, 0,
                                 0)); // Cam mounted facing forward, 16 inches forward of center, half a meter up
+        static final Transform3d leftCamToFrontBumper =
+                new Transform3d(
+                        new Translation3d(Units.inchesToMeters(17)/2, 0.0, -Units.inchesToMeters(12)),
+                        // new Translation3d(0, 0, 0),
+                        new Rotation3d(
+                                0, 0,
+                                Units.degreesToRadians(30))); // Cam mounted facing forward, 16 inches forward of center, half a meter up
+        static final Transform3d rightCamToFrontBumper =
+                new Transform3d(
+                        new Translation3d(-Units.inchesToMeters(17)/2, 0.0, -Units.inchesToMeters(12)),
+                        // new Translation3d(0, 0, 0),
+                        new Rotation3d(
+                                0, 0,
+                                -Units.degreesToRadians(30))); // Cam mounted facing forward, 16 inches forward of center, half a meter up
+
         // from center.
         public static final String cameraName = "OV5647";
     }

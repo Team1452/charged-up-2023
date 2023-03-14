@@ -13,10 +13,12 @@ public class ArmSubsystem {
 
     public enum ArmTargetChoice {
         MANUAL_CONTROL,
+        STOW,
         LEVEL_TWO_POLE,
         LEVEL_TWO_PLATFORM,
         LEVEL_THREE_POLE,
         LEVEL_THREE_PLATFORM,
+        DOUBLE_SUBSTATION,
     }
 
     private ArmTargetChoice targetChoice = ArmTargetChoice.MANUAL_CONTROL;
@@ -127,23 +129,28 @@ public class ArmSubsystem {
             targetChoice = ArmTargetChoice.MANUAL_CONTROL;
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
             armPosition += armScaleConstant*percentChange*0.01;
-
     }
 
     public void setIdleMode(CANSparkMax.IdleMode mode){
         arm.setIdleMode(mode);
         extender.setIdleMode(mode);
     }
+
     public void setTargetMode(ArmTargetChoice t){
         targetChoice = t;
     }
-    public ArmTargetChoice update(){
 
+    public ArmTargetChoice update() {
         currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
         + extenderEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
 
         ArmTargetChoice out = ArmTargetChoice.MANUAL_CONTROL;
         switch(targetChoice){
+            case STOW:
+                armPosition = Constants.ArmConstants.MIN_ROTATION_RAD;
+                extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS; 
+                out = ArmTargetChoice.STOW;
+                break;
             case LEVEL_TWO_POLE:
                 armPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
                 extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
@@ -163,6 +170,11 @@ public class ArmSubsystem {
                 armPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
                 extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
                 out = ArmTargetChoice.LEVEL_TWO_PLATFORM;
+                break;
+            case DOUBLE_SUBSTATION:
+                armPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
+                extenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
+                out = ArmTargetChoice.DOUBLE_SUBSTATION;
                 break;
             default:
                 break;

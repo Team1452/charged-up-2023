@@ -73,6 +73,7 @@ import frc.robot.commands.MoveDistance;
 import frc.robot.commands.SetArmAndExtender;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.EditableParameter;
+import frc.robot.util.XboxButtonHelper;
 import io.javalin.Javalin;
 import kotlin.UByteArrayKt;
 import frc.robot.commands.CenterPhotonVisionTarget;
@@ -103,6 +104,8 @@ public class Robot extends TimedRobot {
   // Logitech joystick, make sure that Xbox is 0 and Joystick is 1
   private final XboxController controller = new XboxController(0);
   private final XboxController driveController = new XboxController(1);
+
+  private final XboxButtonHelper driveControllerButtons = new XboxButtonHelper(controller);
 
   private int tick = 0;
 
@@ -135,16 +138,19 @@ public class Robot extends TimedRobot {
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
 
   public static EditableParameter speedDeadzone = new EditableParameter(tab, "Speed Deadzone", 0.05);
+  public static EditableParameter armScale = new EditableParameter(tab, "Arm Scale", 1);
+  public static EditableParameter armFineScale = new EditableParameter(tab, "Arm Fine Scale", 0.5);
   public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
   public static EditableParameter z = new EditableParameter(tab, "z", 16);
   public static EditableParameter m = new EditableParameter(tab, "m", .3);
 
-  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.05);
-  public static EditableParameter r1 = new EditableParameter(tab, "r1", 0.33);
-  public static EditableParameter z1 = new EditableParameter(tab, "z1", 12);
-  public static EditableParameter m1 = new EditableParameter(tab, "m1", .05);
+  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "current limit claw", 15);
 
-  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.1);
+  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
+  public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
+  public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
+
+  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake rpeed", 0.5);
 
   @Override
   public void robotInit() {
@@ -392,9 +398,9 @@ public class Robot extends TimedRobot {
     return Math.copySign(value, x);
   }
 
-  private double turnCurve(double x, double deadzone, double r, double z, double m) {
+  private double turnCurve(double x, double deadzone, double scale, double factor) {
     double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
-    double value = (Math.pow(mag * 0.9 - r, 5) * z) + m;
+    double value = scale*Math.pow(mag, factor);
     return Math.copySign(value, x);
   }
   // private double turningCurve(double x, double deadzone, double r, double z,
@@ -418,21 +424,24 @@ Joystick joystick = new Joystick(4);
     double zValue = z.getValue();
     double mValue = m.getValue();
     double speedDeadzoneValue = speedDeadzone.getValue();
-
-    double r1Value = r1.getValue();
-    double z1Value = z1.getValue();
-    double m1Value = m1.getValue();
+    double fineScaleValue = fineScale.getValue();
+    double scaleValue = turnScale.getValue();
     double turnDeadzoneValue = turnDeadzone.getValue();
-    double c = 0.9;
-    double speed = velocityCurve(c * jy, speedDeadzoneValue, rValue, zValue, mValue);
+    double speed = velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
     
     double turn;
-
+    double turnFactor = 5;
+    double fineTurnFactor = 7;
     if (Math.abs(speed) < turnIsLinearThreshold.getValue()) {
       turn = jx;
     } else {
-      turn = velocityCurve(jx, turnDeadzoneValue, r1Value, z1Value, m1Value);
+      if(driveController.getLeftTriggerAxis() < 0.5){
+        turn = turnCurve(jx, turnDeadzoneValue, scaleValue, turnFactor);
+      }else{
+        System.out.println("Fine Mode Enabled");
+        turn = turnCurve(jx, turnDeadzoneValue, scaleValue, fineTurnFactor);
     }
+  }
     
     if (turnIsAbsolute) {
       teleopTargetAngle = teleopTargetAngle + 5 * turn;
@@ -441,7 +450,7 @@ Joystick joystick = new Joystick(4);
         //teleopTargetAngle = (double)pov;
       //}
       turn = turnPid.calculate(drive.getHeading(), teleopTargetAngle);
-      System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
+      //System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
     }
 
     if(driveController.getLeftStickButton())
@@ -463,13 +472,16 @@ Joystick joystick = new Joystick(4);
     }
 
     // Thumb button on top of joystick
-    if (joystick.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
-    if (joystick.getRawButtonPressed(2)) target = ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL;
-    if (joystick.getRawButtonPressed(10)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
-    if (joystick.getRawButtonPressed(12)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
-    if (joystick.getRawButtonPressed(9)) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE;
-    if (joystick.getRawButtonPressed(11)) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
-    //armSubSys.setTargetMode(target);
+    // if (driveCntroller.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
+    if (driveController.getLeftBumperPressed()) target = ArmSubsystem.ArmTargetChoice.STOW;
+    if (driveController.getRightBumperPressed()) target = ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION;
+
+    if (driveControllerButtons.getYButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
+    if (driveControllerButtons.getAButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
+
+    if (driveController.getXButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+    armSubSys.setTargetMode(target);
+
     if(controller.getRawButton(6)) {
       // if (balanceCommand.isScheduled())
       //   balanceCommand.cancel();
@@ -480,13 +492,29 @@ Joystick joystick = new Joystick(4);
     if(controller.getRightBumper()) {
       armSubSys.changeExtenderPosition(1.2);
     }
-
     if(controller.getLeftBumper()) {
       armSubSys.changeExtenderPosition(-1.2);
     }
 
-    armSubSys.changeArmPosition(controller.getRightTriggerAxis() - controller.getLeftTriggerAxis());
+    double armScaleValue = armScale.getValue();
+    if(controller.getAButton())
+      armScaleValue = armFineScale.getValue();
+    armSubSys.changeArmPosition( (controller.getRightTriggerAxis() - controller.getLeftTriggerAxis())*armScaleValue );
 
+    // Intake    
+    
+    System.out.println("output current arm" + intake.getOutputCurrent());
+    if (intake.getOutputCurrent() < currentLimitClaw.getValue()) {
+      if (controller.getYButton()) {
+        intake.set(intakeSpeed.getValue());
+      } else if (controller.getAButton()) {
+        intake.set(-intakeSpeed.getValue());
+      } else {
+        intake.set(0);
+      }
+    } else {
+      intake.set(0);
+    }
     // if (compressorEnabled) {
     //   // Calculate pressure from analog input
     //   // (from REV analog sensor datasheet)
@@ -517,18 +545,6 @@ Joystick joystick = new Joystick(4);
     // }
 
 
-    // Intake    
-    if (intake.getOutputCurrent() < 30) {
-      if (controller.getYButton()) {
-        intake.set(intakeSpeed.getValue());
-      } else if (controller.getAButton()) {
-        intake.set(-intakeSpeed.getValue());
-      } else {
-        intake.set(0);
-      }
-    } else {
-      intake.set(0);
-    }
 
     // PISTON
     // if (!lastBButtonStatus && controller.getBButtonPressed()) {
