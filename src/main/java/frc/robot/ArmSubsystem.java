@@ -182,14 +182,15 @@ public class ArmSubsystem {
 
         armY = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         armX = Math.cos(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
-        //if we're at the arm position then we switch back to manual control
+
+        // if we're at the arm position then we switch back to manual control
         if(Math.abs(armEncoder.getPosition()-armPosition)<0.5 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.5 ){
             out = ArmTargetChoice.MANUAL_CONTROL;
         }
 
 
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
-            // System.out.println("Manual Control: Setting extender PID to " + (-extenderPosition));
+            System.out.printf("ArmSubsystem: Manual control: Setting extender to %.3f, at %.3f. Setting arm to %.3f, is %.3f\n", extenderPosition, extenderEncoder.getPosition(), armPosition, armEncoder.getPosition());
             setExtenderPosition(extenderPosition);
             setArmPosition(armPosition);
         }

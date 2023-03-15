@@ -91,7 +91,8 @@ public class Constants {
     public static class ExtenderConstants {
         public static final double EXTENDER_GEARING = 1/5;
 
-        public static final double MAX_EXTENDER_ROTATIONS = 33.55;
+        // public static final double MAX_EXTENDER_ROTATIONS = 33.55;
+        public static final double MAX_EXTENDER_ROTATIONS = 67.1;
         public static final double MIN_EXTENDER_ROTATIONS = 0;
         public static final double EXTENDER_ROTATION_RANGE = MAX_EXTENDER_ROTATIONS - MIN_EXTENDER_ROTATIONS;
 
@@ -181,5 +182,6 @@ public class Constants {
 
         // from center.
         public static final String cameraName = "OV5647";
+        public static final String armCameraName = "ArmCam";
     }
 }

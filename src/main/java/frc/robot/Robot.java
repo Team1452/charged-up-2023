@@ -144,18 +144,29 @@ public class Robot extends TimedRobot {
   public static EditableParameter z = new EditableParameter(tab, "z", 16);
   public static EditableParameter m = new EditableParameter(tab, "m", .3);
 
-  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "current limit claw", 15);
+  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 50);
 
   public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
   public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
   public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
 
-  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake rpeed", 0.5);
+  public static EditableParameter ArmP = new EditableParameter(tab, "ArmP", 0.12);
+  public static EditableParameter ArmI= new EditableParameter(tab, "ArmI", 0);
+  public static EditableParameter ArmD = new EditableParameter(tab, "ArmD",0);
+
+  public static EditableParameter extenderP = new EditableParameter(tab, "ExtenderP", 0.3);
+  public static EditableParameter extenderI = new EditableParameter(tab, "ExtenderI", 0);
+  public static EditableParameter extenderD = new EditableParameter(tab, "ExtenderD",0);
+
+  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.7);
 
   @Override
   public void robotInit() {
     intake.setSmartCurrentLimit(Constants.CurrentLimits.INTAKE_LIMIT);
     turnPid.enableContinuousInput(-180, 180);
+
+    // Add front camera
+    tab.addCamera("Arm Camera", Constants.VisionConstants.armCameraName, "photonvision.local:1182");
 
     try {
       LocalTime time = LocalTime.now();
@@ -187,6 +198,10 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     drive.updateOdometry();
+
+    armSubSys.getArmPID().setP(extenderP.getValue());
+    armSubSys.getArmPID().setI(extenderI.getValue());
+    armSubSys.getArmPID().setD(extenderD.getValue());
 
     Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
     Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
@@ -435,13 +450,13 @@ Joystick joystick = new Joystick(4);
     if (Math.abs(speed) < turnIsLinearThreshold.getValue()) {
       turn = jx;
     } else {
-      if(driveController.getLeftTriggerAxis() < 0.5){
+      if (driveController.getLeftTriggerAxis() < 0.5) {
         turn = turnCurve(jx, turnDeadzoneValue, scaleValue, turnFactor);
-      }else{
+      } else {
         System.out.println("Fine Mode Enabled");
         turn = turnCurve(jx, turnDeadzoneValue, scaleValue, fineTurnFactor);
+      }
     }
-  }
     
     if (turnIsAbsolute) {
       teleopTargetAngle = teleopTargetAngle + 5 * turn;
@@ -454,9 +469,9 @@ Joystick joystick = new Joystick(4);
     }
 
     if(driveController.getLeftStickButton())
-      speed = jx ==0 ? 0 : Math.copySign(0.05, jx);
+      speed = jx < 1e-6 ? 0 : Math.copySign(0.05, jx);
     if(driveController.getRightStickButton())
-      turn = jy ==0 ? 0 : Math.copySign(0.05, jy);
+      turn = jy < 1e-6 ? 0 : Math.copySign(0.05, jy);
     drive.differentialDrive(speed, turn);
 
     if (controller.getXButtonPressed()) {
@@ -479,8 +494,17 @@ Joystick joystick = new Joystick(4);
     if (driveControllerButtons.getYButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
     if (driveControllerButtons.getAButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
 
-    if (driveController.getXButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
-    armSubSys.setTargetMode(target);
+    if (driveController.getXButtonPressed()) {
+      // Enable level two pole, if pressed again then manual control
+      // TODO: Refactor
+      if (target == ArmTargetChoice.LEVEL_TWO_POLE) {
+        target = ArmTargetChoice.MANUAL_CONTROL;
+      } else {
+        target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
+      }
+    }
+
+    //armSubSys.setTargetMode(target);
 
     if(controller.getRawButton(6)) {
       // if (balanceCommand.isScheduled())
@@ -489,11 +513,15 @@ Joystick joystick = new Joystick(4);
       //   balanceCommand.schedule();
     }
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
+    double armSpeed = driveController.getLeftTriggerAxis() < 0.5
+      ? 1.2
+      : 0.3;
+
     if(controller.getRightBumper()) {
-      armSubSys.changeExtenderPosition(1.2);
+      armSubSys.changeExtenderPosition(armSpeed);
     }
     if(controller.getLeftBumper()) {
-      armSubSys.changeExtenderPosition(-1.2);
+      armSubSys.changeExtenderPosition(-armSpeed);
     }
 
     double armScaleValue = armScale.getValue();
@@ -503,7 +531,6 @@ Joystick joystick = new Joystick(4);
 
     // Intake    
     
-    System.out.println("output current arm" + intake.getOutputCurrent());
     if (intake.getOutputCurrent() < currentLimitClaw.getValue()) {
       if (controller.getYButton()) {
         intake.set(intakeSpeed.getValue());
@@ -513,6 +540,7 @@ Joystick joystick = new Joystick(4);
         intake.set(0);
       }
     } else {
+      System.out.println("Robot: Clamping intake current at: " + intake.getOutputCurrent());
       intake.set(0);
     }
     // if (compressorEnabled) {
