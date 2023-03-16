@@ -9,4 +9,8 @@ public class Utils {
         return Math.abs(controller.getPositionError()) < controller.getPositionTolerance()
             && Math.abs(controller.getVelocityError()) < controller.getVelocityTolerance();
     }
+
+    public static double deadzone(double value, double deadzone) {
+        return Math.copySign(Math.max(0, value - deadzone), value);
+    }
 }

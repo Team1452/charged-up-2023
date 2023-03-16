@@ -73,6 +73,7 @@ import frc.robot.commands.MoveDistance;
 import frc.robot.commands.SetArmAndExtender;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.EditableParameter;
+import frc.robot.util.Utils;
 import frc.robot.util.XboxButtonHelper;
 import io.javalin.Javalin;
 import kotlin.UByteArrayKt;
@@ -127,6 +128,8 @@ public class Robot extends TimedRobot {
   private GenericEntry kBalanceP, kBalanceI, kBalanceD;
   private GenericEntry kTurnP, kTurnI, kTurnD;
   private GenericEntry kMaxSpeed, kMaxVoltage;
+  
+  private GenericEntry preciseLinearToggleWidget = tab.add("Precision Toggle", false).getEntry();
 
   private Balance balanceCommand;
 
@@ -146,6 +149,7 @@ public class Robot extends TimedRobot {
 
   public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 50);
 
+  public static EditableParameter preciseLinearModeCoeff = new EditableParameter(tab, "Precision Mode Linear Coeff", 0.2);
   public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
   public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
   public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
@@ -425,7 +429,10 @@ public class Robot extends TimedRobot {
   // z + Math.pow(-mag * b + r, 3.0) * z + m));
   // return Math.copySign(value, x);
   // }
-Joystick joystick = new Joystick(4);
+  Joystick joystick = new Joystick(4);
+  boolean preciseLinearToggle = false; // TODO: Move this to separate class
+  long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
+
   @Override
   public void teleopPeriodic() {
     Pose2d pose = drive.getPoseWithVisionMeasurements();
@@ -442,13 +449,19 @@ Joystick joystick = new Joystick(4);
     double fineScaleValue = fineScale.getValue();
     double scaleValue = turnScale.getValue();
     double turnDeadzoneValue = turnDeadzone.getValue();
-    double speed = velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
+    
+    double speed = preciseLinearToggle
+      ? preciseLinearModeCoeff.getValue() * Utils.deadzone(jy, speedDeadzoneValue)
+      : velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
     
     double turn;
     double turnFactor = 5;
     double fineTurnFactor = 7;
     if (Math.abs(speed) < turnIsLinearThreshold.getValue()) {
-      turn = jx;
+      // TODO: Move to function
+      turn = Utils.deadzone(jx, turnDeadzoneValue);
+    } else if (preciseLinearToggle) {
+      turn = preciseLinearModeCoeff.getValue() * Utils.deadzone(jx, turnDeadzoneValue);
     } else {
       if (driveController.getLeftTriggerAxis() < 0.5) {
         turn = turnCurve(jx, turnDeadzoneValue, scaleValue, turnFactor);
@@ -487,7 +500,7 @@ Joystick joystick = new Joystick(4);
     }
 
     // Thumb button on top of joystick
-    // if (driveCntroller.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
+    // if (driveController.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
     if (driveController.getLeftBumperPressed()) target = ArmSubsystem.ArmTargetChoice.STOW;
     if (driveController.getRightBumperPressed()) target = ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION;
 
@@ -504,24 +517,34 @@ Joystick joystick = new Joystick(4);
       }
     }
 
-    //armSubSys.setTargetMode(target);
+    // TODO: Move this to separate helper class
+    long time = preciseLinearToggleWidget.getLastChange();
+    if (time != preciseLinearToggleLastChangedTime) {
+      preciseLinearToggleLastChangedTime = time;
+      preciseLinearToggle = preciseLinearToggleWidget.getBoolean(false);
+    } else if (driveController.getLeftStickButtonPressed()) {
+      preciseLinearToggle = !preciseLinearToggle;
+      preciseLinearToggleWidget.setBoolean(preciseLinearToggle);
+    }
 
-    if(controller.getRawButton(6)) {
+    armSubSys.setTargetMode(target);
+
+    if (controller.getRawButton(6)) {
       // if (balanceCommand.isScheduled())
       //   balanceCommand.cancel();
       // else
       //   balanceCommand.schedule();
     }
     //EXTENDER - 3.6 inches for every 5 rotations of the motr
-    double armSpeed = driveController.getLeftTriggerAxis() < 0.5
-      ? 1.2
-      : 0.3;
+    //double armSpeed = driveController.getLeftTriggerAxis() < 0.5
+    //  ? 1.2
+    //  : 0.3;
 
     if(controller.getRightBumper()) {
-      armSubSys.changeExtenderPosition(armSpeed);
+      armSubSys.changeExtenderPosition(1.2);
     }
     if(controller.getLeftBumper()) {
-      armSubSys.changeExtenderPosition(-armSpeed);
+      armSubSys.changeExtenderPosition(-1.2);
     }
 
     double armScaleValue = armScale.getValue();
@@ -591,14 +614,14 @@ Joystick joystick = new Joystick(4);
     lastAButtonStatus = controller.getAButton();
     lastBButtonStatus = controller.getBButton();
 
-    if (joystick.getRawButtonPressed(2)) {
-      // if (drive.isUsingVelocity()) {
-      //   drive.disableVelocityControl();
-      //   System.out.println("Robot: Using voltage control");
-      // } else {
-      //   drive.enableVelocityControl();
-      //   System.out.println("Robot: Using velocity control");
-      // }
+    if (driveController.getRightStickButtonPressed()) {
+      if (drive.isUsingVelocity()) {
+        drive.disablePIDControl();
+        System.out.println("Robot: Using voltage control");
+      } else {
+        drive.enableVelocityControl();
+        System.out.println("Robot: Using velocity control");
+      }
     }
 
     CommandScheduler.getInstance().run();

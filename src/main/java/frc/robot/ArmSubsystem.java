@@ -72,7 +72,7 @@ public class ArmSubsystem {
         oldExtenderPosition = extenderPosition;
         oldArmPosition = armPosition;
 
-        armPID.setP(0.1);
+        armPID.setP(0.2);
         armPID.setI(0.000);
         armPID.setD(0.00);
         armPID.setOutputRange(-1, 1);
@@ -191,9 +191,10 @@ public class ArmSubsystem {
 
         if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
             System.out.printf("ArmSubsystem: Manual control: Setting extender to %.3f, at %.3f. Setting arm to %.3f, is %.3f\n", extenderPosition, extenderEncoder.getPosition(), armPosition, armEncoder.getPosition());
-            setExtenderPosition(extenderPosition);
-            setArmPosition(armPosition);
         }
+
+        setExtenderPosition(extenderPosition);
+        setArmPosition(armPosition);
 
         return out;
     }
