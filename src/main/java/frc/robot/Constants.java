@@ -50,20 +50,25 @@ public class Constants {
     }
 
     static class ScoringConstants {
-        public static double LOW_CONE_NODE_EXTENDER_ROTATIONS = 15.5;
+        // public static double LOW_CONE_NODE_EXTENDER_ROTATIONS = 15.5;
+        public static double LOW_CONE_NODE_EXTENDER_ROTATIONS = 2*15.5;
         public static double LOW_CONE_NODE_ARM_ANGLE = 71.12;
 
-        public static double LOW_CUBE_NODE_EXTENDER_ROTATIONS = 10.29;
+        // public static double LOW_CUBE_NODE_EXTENDER_ROTATIONS = 10.29;
+        public static double LOW_CUBE_NODE_EXTENDER_ROTATIONS = 2*10.29;
         public static double LOW_CUBE_NODE_ARM_ANGLE = 77.95;
 
 
-        public static double HIGH_CONE_NODE_EXTENDER_ROTATIONS = 34.14;
+        // public static double HIGH_CONE_NODE_EXTENDER_ROTATIONS = 34.14;
+        public static double HIGH_CONE_NODE_EXTENDER_ROTATIONS = 2*34.14;
         public static double HIGH_CONE_NODE_ARM_ANGLE = 64.19;
 
-        public static double HIGH_CUBE_NODE_EXTENDER_ROTATIONS = 29.64;
+        // public static double HIGH_CUBE_NODE_EXTENDER_ROTATIONS = 29.64;
+        public static double HIGH_CUBE_NODE_EXTENDER_ROTATIONS = 2*29.64;
         public static double HIGH_CUBE_NODE_ARM_ANGLE = 71.36;
 
-        public static double DRIVER_STATION_EXTENDER_ROTATIONS = 29.64;
+        // public static double DRIVER_STATION_EXTENDER_ROTATIONS = 29.64;
+        public static double DRIVER_STATION_EXTENDER_ROTATIONS = 2*29.64;
         public static double DRIVER_STATION_ARM_ANGLE = 73.54;
 
 

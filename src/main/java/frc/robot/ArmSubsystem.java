@@ -11,6 +11,7 @@ import edu.wpi.first.math.util.Units;
 import frc.robot.Constants.FieldConstants;
 public class ArmSubsystem {
 
+    // TODO: Deprecate
     public enum ArmTargetChoice {
         MANUAL_CONTROL,
         STOW,
@@ -21,7 +22,7 @@ public class ArmSubsystem {
         DOUBLE_SUBSTATION,
     }
 
-    private ArmTargetChoice targetChoice = ArmTargetChoice.MANUAL_CONTROL;
+    // private ArmTargetChoice targetChoice = ArmTargetChoice.MANUAL_CONTROL;
     private CANSparkMax arm;
     private CANSparkMax extender; 
 
@@ -72,7 +73,7 @@ public class ArmSubsystem {
         oldExtenderPosition = extenderPosition;
         oldArmPosition = armPosition;
 
-        armPID.setP(0.2);
+        armPID.setP(0.1);
         armPID.setI(0.000);
         armPID.setD(0.00);
         armPID.setOutputRange(-1, 1);
@@ -116,18 +117,18 @@ public class ArmSubsystem {
 
     public void changeExtenderPosition(double percentChange){
         updateSavedPositions();
-        if(percentChange > 0)
-            targetChoice = ArmTargetChoice.MANUAL_CONTROL;
-        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
+        // if(percentChange > 0)
+        //     targetChoice = ArmTargetChoice.MANUAL_CONTROL;
+        // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             extenderPosition += extenderScaleConstant*percentChange*0.01;
-        }
+        // }
     }
 
     public void changeArmPosition(double percentChange){
         updateSavedPositions();
-        if(percentChange > 0)
-            targetChoice = ArmTargetChoice.MANUAL_CONTROL;
-        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
+        // if(percentChange > 0)
+        //     targetChoice = ArmTargetChoice.MANUAL_CONTROL;
+        // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
             armPosition += armScaleConstant*percentChange*0.01;
     }
 
@@ -136,76 +137,107 @@ public class ArmSubsystem {
         extender.setIdleMode(mode);
     }
 
-    public void setTargetMode(ArmTargetChoice t){
-        targetChoice = t;
-    }
+    // public void setTargetMode(ArmTargetChoice t){
+    //     targetChoice = t;
+    // }
 
-    public ArmTargetChoice update() {
+    public void update() {
         currentExtenderLength = Constants.ExtenderConstants.MIN_ARM_LENGTH
         + extenderEncoder.getPosition() * Constants.ExtenderConstants.METERS_PER_ROTATION;
 
-        ArmTargetChoice out = ArmTargetChoice.MANUAL_CONTROL;
-        switch(targetChoice){
-            case STOW:
-                armPosition = Constants.ArmConstants.MIN_ROTATION_RAD;
-                extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS; 
-                out = ArmTargetChoice.STOW;
-                break;
-            case LEVEL_TWO_POLE:
-                armPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
-                extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
-                out = ArmTargetChoice.LEVEL_TWO_POLE;
-                break;
-            case LEVEL_THREE_POLE:
-                armPosition = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;      
-                extenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
-                out = ArmTargetChoice.LEVEL_THREE_POLE;
-                break;
-            case LEVEL_THREE_PLATFORM:
-                armPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;  
-                extenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
-                out = ArmTargetChoice.LEVEL_THREE_PLATFORM;
-                break;
-            case LEVEL_TWO_PLATFORM:
-                armPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
-                extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
-                out = ArmTargetChoice.LEVEL_TWO_PLATFORM;
-                break;
-            case DOUBLE_SUBSTATION:
-                armPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
-                extenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
-                out = ArmTargetChoice.DOUBLE_SUBSTATION;
-                break;
-            default:
-                break;
-        }
+        // ArmTargetChoice out = ArmTargetChoice.MANUAL_CONTROL;
+        // switch(targetChoice){
+        //     case STOW:
+        //         armPosition = Constants.ArmConstants.MIN_ROTATION_RAD;
+        //         extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS; 
+        //         out = ArmTargetChoice.STOW;
+        //         break;
+        //     case LEVEL_TWO_POLE:
+        //         armPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
+        //         extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
+        //         out = ArmTargetChoice.LEVEL_TWO_POLE;
+        //         break;
+        //     case LEVEL_THREE_POLE:
+        //         armPosition = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;      
+        //         extenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
+        //         out = ArmTargetChoice.LEVEL_THREE_POLE;
+        //         break;
+        //     case LEVEL_THREE_PLATFORM:
+        //         armPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;  
+        //         extenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
+        //         out = ArmTargetChoice.LEVEL_THREE_PLATFORM;
+        //         break;
+        //     case LEVEL_TWO_PLATFORM:
+        //         armPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
+        //         extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
+        //         out = ArmTargetChoice.LEVEL_TWO_PLATFORM;
+        //         break;
+        //     case DOUBLE_SUBSTATION:
+        //         armPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
+        //         extenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
+        //         out = ArmTargetChoice.DOUBLE_SUBSTATION;
+        //         break;
+        //     default:
+        //         break;
+        // }
 
         armY = Math.sin(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
         armX = Math.cos(armEncoder.getPosition() * armScaleRad) * currentExtenderLength;
 
         // if we're at the arm position then we switch back to manual control
-        if(Math.abs(armEncoder.getPosition()-armPosition)<0.5 && Math.abs(extenderEncoder.getPosition()-extenderPosition)<0.5 ){
-            out = ArmTargetChoice.MANUAL_CONTROL;
+        if(Math.abs(armEncoder.getPosition()-armPosition) < 0.5 && Math.abs(extenderEncoder.getPosition()-extenderPosition) < 0.5) {
+            // out = ArmTargetChoice.MANUAL_CONTROL;
         }
 
 
-        if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
-            System.out.printf("ArmSubsystem: Manual control: Setting extender to %.3f, at %.3f. Setting arm to %.3f, is %.3f\n", extenderPosition, extenderEncoder.getPosition(), armPosition, armEncoder.getPosition());
-        }
+        // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
+            // System.out.printf("ArmSubsystem: Manual control: Setting extender to %.3f, at %.3f. Setting arm to %.3f, is %.3f\n", extenderPosition, extenderEncoder.getPosition(), armPosition, armEncoder.getPosition());
+        // }
 
         setExtenderPosition(extenderPosition);
         setArmPosition(armPosition);
+    }
 
-        return out;
+    public void setPreset(ArmTargetChoice targetPreset) {
+        switch(targetPreset) {
+            case STOW:
+                armPosition = Constants.ArmConstants.MIN_ROTATION_RAD;
+                // extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS; 
+                break;
+            case LEVEL_TWO_POLE:
+                armPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
+                // extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
+                break;
+            case LEVEL_THREE_POLE:
+                armPosition = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;      
+                // extenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
+                break;
+            case LEVEL_THREE_PLATFORM:
+                armPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;  
+                // extenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
+                break;
+            case LEVEL_TWO_PLATFORM:
+                armPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
+                // extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
+                break;
+            case DOUBLE_SUBSTATION:
+                armPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
+                // extenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
+                break;
+            default:
+                break;
+        }
+        setArmPosition(armPosition);
+        System.out.printf("ArmSubsystem: Set arm position to %.3f, extender position is %.3f\n", armPosition, extenderPosition);
     }
 
     public void setExtenderPosition(double extenderPosition) {
-        extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
+        this.extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
         extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
     }
 
     public void setArmPosition(double armPosition) {
-        armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
     }
     

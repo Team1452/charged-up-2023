@@ -158,7 +158,8 @@ public class DriveSubsystem extends SubsystemBase {
     CANSparkMax[] motors = new CANSparkMax[canIds.length];
     for (int i = 0; i < canIds.length; i++) {
       motors[i] = new CANSparkMax(canIds[i], MotorType.kBrushless);
-      motors[i].setIdleMode(IdleMode.kBrake); // Set idle mode to brake
+      // motors[i].setIdleMode(IdleMode.kBrake); // Set idle mode to brake
+      motors[i].setIdleMode(IdleMode.kCoast); // Set idle mode to brake
     }
     return motors;
   }
@@ -199,16 +200,16 @@ public class DriveSubsystem extends SubsystemBase {
 
   private void setWithLimit(MotorController controller, double value) {
     double limitedValue = Math.copySign(Math.min(Math.abs(value), maxVoltage), value);
-    System.out.printf("Setting to %.3f; ", limitedValue);
+    // System.out.printf("Setting to %.3f; ", limitedValue);
     controller.set(limitedValue);
   }
 
   private void differentialDriveVoltage(double speed, double turn) {
     // Positive turn turns right, negative turns left
-    System.out.printf("DriveSubsystem: Max voltage is " + maxVoltage + "; ");
+    // System.out.printf("DriveSubsystem: Max voltage is " + maxVoltage + "; ");
     setWithLimit(left, speed + turn);
     setWithLimit(right, speed - turn);
-    System.out.println();
+    // System.out.println();
   }
 
   public double getMaxSpeed() {

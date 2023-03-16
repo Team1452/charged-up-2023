@@ -67,6 +67,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.button.POVButton;
 import frc.robot.ArmSubsystem.ArmTargetChoice;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
@@ -106,19 +107,19 @@ public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
   private final XboxController driveController = new XboxController(1);
 
-  private final XboxButtonHelper driveControllerButtons = new XboxButtonHelper(controller);
+  private final XboxButtonHelper mechanismControllerButtons = new XboxButtonHelper(controller);
 
   private int tick = 0;
 
   private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.MOTOR_EXTEND);
-  private ArmSubsystem.ArmTargetChoice target = ArmTargetChoice.MANUAL_CONTROL;
-  private ArmSubsystem.ArmTargetChoice[] targetModes = {
-      ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL,
-      ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM,
-      ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE,
-      ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM,
-      ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE
-  };
+  // private ArmSubsystem.ArmTargetChoice target = ArmTargetChoice.MANUAL_CONTROL;
+  // private ArmSubsystem.ArmTargetChoice[] targetModes = {
+  //     ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL,
+  //     ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM,
+  //     ArmSubsystem.ArmTargetChoice.LEVEL_THREE_POLE,
+  //     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM,
+  //     ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE
+  // };
 
   private static ShuffleboardTab tab = Shuffleboard.getTab(String.format("Pt. H %.4f", Math.random()));
 
@@ -140,18 +141,23 @@ public class Robot extends TimedRobot {
 
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
 
+  public static EditableParameter turnCurveScalingFactor = new EditableParameter(tab, "Turn Scaling", 0.4);
+  public static EditableParameter velocityCurveScalingFactor = new EditableParameter(tab, "Velocity Scaling", 1);
+  public static EditableParameter turnCurveExponent = new EditableParameter(tab, "Turn Exponent", 2);
+  public static EditableParameter velocityCurveExponent = new EditableParameter(tab, "Velocity Exponent", 2);
+
   public static EditableParameter speedDeadzone = new EditableParameter(tab, "Speed Deadzone", 0.05);
   public static EditableParameter armScale = new EditableParameter(tab, "Arm Scale", 1);
   public static EditableParameter armFineScale = new EditableParameter(tab, "Arm Fine Scale", 0.5);
-  public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
-  public static EditableParameter z = new EditableParameter(tab, "z", 16);
-  public static EditableParameter m = new EditableParameter(tab, "m", .3);
+  // public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
+  // public static EditableParameter z = new EditableParameter(tab, "z", 16);
+  // public static EditableParameter m = new EditableParameter(tab, "m", .3);
 
   public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 50);
 
   public static EditableParameter preciseLinearModeCoeff = new EditableParameter(tab, "Precision Mode Linear Coeff", 0.2);
   public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
-  public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
+  // public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
   public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
 
   public static EditableParameter ArmP = new EditableParameter(tab, "ArmP", 0.12);
@@ -386,7 +392,7 @@ public class Robot extends TimedRobot {
     drive.setMaxVoltage(1);
     teleopTargetAngle = drive.getHeading();
     armSubSys.reset();
-    lastPov = joystick.getPOV();
+    // lastPov = joystick.getPOV();
   }
 
   @Override
@@ -411,16 +417,20 @@ public class Robot extends TimedRobot {
 
   boolean turnIsAbsolute = false;
 
-  private double velocityCurve(double x, double deadzone, double r, double z, double m) {
-    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
-    double value = (Math.pow(mag - r, 5) * z) + m;
-    return Math.copySign(value, x);
+  private double velocityCurve(double x, double deadzone) {
+    // double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
+    // double value = (Math.pow(mag - r, 5) * z) + m;
+    // return Math.copySign(value, x);
+    double mag = Utils.deadzone(x, deadzone);
+    return velocityCurveScalingFactor.getValue() * Math.copySign(Math.pow(mag, velocityCurveExponent.getValue()), x);
   }
 
-  private double turnCurve(double x, double deadzone, double scale, double factor) {
-    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
-    double value = scale*Math.pow(mag, factor);
-    return Math.copySign(value, x);
+  private double turnCurve(double x, double deadzone) {
+    // double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
+    // double value = scale*Math.pow(mag, factor);
+    // return Math.copySign(value, x);
+    double mag = Utils.deadzone(x, deadzone);
+    return turnCurveScalingFactor.getValue() * Math.copySign(Math.pow(mag, turnCurveExponent.getValue()), x);
   }
   // private double turningCurve(double x, double deadzone, double r, double z,
   // double m, double b) {
@@ -429,7 +439,7 @@ public class Robot extends TimedRobot {
   // z + Math.pow(-mag * b + r, 3.0) * z + m));
   // return Math.copySign(value, x);
   // }
-  Joystick joystick = new Joystick(4);
+  // Joystick joystick = new Joystick(4);
   boolean preciseLinearToggle = false; // TODO: Move this to separate class
   long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
 
@@ -437,22 +447,22 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     Pose2d pose = drive.getPoseWithVisionMeasurements();
 
-    double throttle = 1-(joystick.getThrottle() + 1)/2;
+    // double throttle = 1-(joystick.getThrottle() + 1)/2;
     
-    double jx = driveController.getLeftX();
+    double jx = driveController.getRightX();
     double jy = -driveController.getRightY();
 
-    double rValue = r.getValue();
-    double zValue = z.getValue();
-    double mValue = m.getValue();
+    // double rValue = r.getValue();
+    // double zValue = z.getValue();
+    // double mValue = m.getValue();
     double speedDeadzoneValue = speedDeadzone.getValue();
     double fineScaleValue = fineScale.getValue();
-    double scaleValue = turnScale.getValue();
+    // double scaleValue = turnScale.getValue();
     double turnDeadzoneValue = turnDeadzone.getValue();
     
     double speed = preciseLinearToggle
       ? preciseLinearModeCoeff.getValue() * Utils.deadzone(jy, speedDeadzoneValue)
-      : velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
+      : velocityCurve(jy, speedDeadzoneValue);
     
     double turn;
     double turnFactor = 5;
@@ -464,10 +474,10 @@ public class Robot extends TimedRobot {
       turn = preciseLinearModeCoeff.getValue() * Utils.deadzone(jx, turnDeadzoneValue);
     } else {
       if (driveController.getLeftTriggerAxis() < 0.5) {
-        turn = turnCurve(jx, turnDeadzoneValue, scaleValue, turnFactor);
+        turn = turnCurve(jx, turnDeadzoneValue);
       } else {
         System.out.println("Fine Mode Enabled");
-        turn = turnCurve(jx, turnDeadzoneValue, scaleValue, fineTurnFactor);
+        turn = turnCurve(jx, turnDeadzoneValue);
       }
     }
     
@@ -501,20 +511,14 @@ public class Robot extends TimedRobot {
 
     // Thumb button on top of joystick
     // if (driveController.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
-    if (driveController.getLeftBumperPressed()) target = ArmSubsystem.ArmTargetChoice.STOW;
-    if (driveController.getRightBumperPressed()) target = ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION;
+    if (controller.getPOV() == 0) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION);
+    if (controller.getPOV() == 180) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.STOW);
 
-    if (driveControllerButtons.getYButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM;
-    if (driveControllerButtons.getAButtonPressed()) target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM;
+    if (controller.getPOV() == 90) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM);
+    if (controller.getPOV() == 270) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM);
 
-    if (driveController.getXButtonPressed()) {
-      // Enable level two pole, if pressed again then manual control
-      // TODO: Refactor
-      if (target == ArmTargetChoice.LEVEL_TWO_POLE) {
-        target = ArmTargetChoice.MANUAL_CONTROL;
-      } else {
-        target = ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE;
-      }
+    if (mechanismControllerButtons.getXButtonPressed()) {
+      armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE);
     }
 
     // TODO: Move this to separate helper class
@@ -522,12 +526,12 @@ public class Robot extends TimedRobot {
     if (time != preciseLinearToggleLastChangedTime) {
       preciseLinearToggleLastChangedTime = time;
       preciseLinearToggle = preciseLinearToggleWidget.getBoolean(false);
-    } else if (driveController.getLeftStickButtonPressed()) {
+    } else if (driveController.getLeftStickButtonPressed() || controller.getLeftStickButtonPressed()) {
       preciseLinearToggle = !preciseLinearToggle;
       preciseLinearToggleWidget.setBoolean(preciseLinearToggle);
     }
 
-    armSubSys.setTargetMode(target);
+    // armSubSys.setTargetMode(target);
 
     if (controller.getRawButton(6)) {
       // if (balanceCommand.isScheduled())
@@ -625,7 +629,7 @@ public class Robot extends TimedRobot {
     }
 
     CommandScheduler.getInstance().run();
-    target = armSubSys.update();
+    // target = armSubSys.update();
   }
 
 
@@ -642,9 +646,11 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
-    double throttle = 1 - (joystick.getThrottle() + 1) / 2;
-    double x = joystick.getX();
-    double y = -joystick.getY(); // Forward is negative on joystick
+    // double throttle = 1 - (joystick.getThrottle() + 1) / 2;
+    double x = 0; // joystick.getX();
+    double y = 0; // -joystick.getY(); // Forward is negative on joystick
+
+    /*
 
     x = Math.copySign(Math.max(Math.abs(x) - 0.1, 0), x);
     y = Math.copySign(Math.max(Math.abs(y) - 0.1, 0), y);
@@ -681,5 +687,6 @@ public class Robot extends TimedRobot {
     System.out.printf("Current angle: %.3f. Target angle: %.3f\n", currentAngle, targetAngle);
 
     drive.differentialDrive(speed, throttle * turn);
+    */
   }
 }

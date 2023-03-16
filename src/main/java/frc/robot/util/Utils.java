@@ -11,6 +11,6 @@ public class Utils {
     }
 
     public static double deadzone(double value, double deadzone) {
-        return Math.copySign(Math.max(0, value - deadzone), value);
+        return Math.copySign(Math.max(0, Math.abs(value) - deadzone), value);
     }
 }
