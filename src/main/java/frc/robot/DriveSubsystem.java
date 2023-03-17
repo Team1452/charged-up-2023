@@ -90,7 +90,6 @@ public class DriveSubsystem extends SubsystemBase {
   public void enableVelocityControl() {
     usingVelocity = true;
 
-
     for (CANSparkMax motor : leftMotors) {
       SparkMaxPIDController controller = motor.getPIDController();
       controller.setP(Constants.DriveConstants.kVelocityP);

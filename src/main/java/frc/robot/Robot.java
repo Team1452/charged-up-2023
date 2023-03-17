@@ -73,6 +73,7 @@ import frc.robot.Constants.DriveConstants;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.SetArmAndExtender;
+import frc.robot.commands.TeleopCommand;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.EditableParameter;
 import frc.robot.util.Utils;
@@ -214,6 +215,8 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     drive.updateOdometry();
+
+    CommandScheduler.getInstance().run();
 
     armSubSys.getArmPID().setP(extenderP.getValue());
     armSubSys.getArmPID().setI(extenderI.getValue());
@@ -449,6 +452,8 @@ public class Robot extends TimedRobot {
   boolean preciseLinearToggle = false; // TODO: Move this to separate class
   long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
 
+  TeleopCommand presetCommand = new TeleopCommand();
+
   @Override
   public void teleopPeriodic() {
     Pose2d pose = drive.getPoseWithVisionMeasurements();
@@ -633,8 +638,6 @@ public class Robot extends TimedRobot {
         System.out.println("Robot: Using velocity control");
       }
     }
-
-    CommandScheduler.getInstance().run();
   }
 
 

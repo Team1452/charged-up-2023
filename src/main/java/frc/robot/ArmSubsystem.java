@@ -9,8 +9,9 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.commands.DynamicCommand;
+import frc.robot.commands.SetArmAndExtender;
 public class ArmSubsystem {
-
     // TODO: Deprecate
     public enum ArmTargetChoice {
         MANUAL_CONTROL,
@@ -43,6 +44,8 @@ public class ArmSubsystem {
     private double armY;
     private double armX;
     final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS - Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS); 
+
+    private DynamicCommand presetCommand;
 
     private double getArmAngleRadians() {
         return armPosition/(Constants.ArmConstants.MAX_ROTATION_ROT - Constants.ArmConstants.MIN_ROTATION_ROT) * Constants.ArmConstants.RANGE_RAD + Constants.ArmConstants.START_ANGLE;
@@ -122,7 +125,7 @@ public class ArmSubsystem {
         // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             extenderPosition += extenderScaleConstant*percentChange*0.01;
         // }
-        setArmPosition(extenderPosition + extenderScaleConstant*percentChange*0.01);
+        setExtenderPosition(extenderPosition + extenderScaleConstant*percentChange*0.01);
     }
 
     public void changeArmPosition(double percentChange){
@@ -200,35 +203,38 @@ public class ArmSubsystem {
     }
 
     public void setPreset(ArmTargetChoice targetPreset) {
+        double targetArmPosition = Constants.ArmConstants.MIN_ROTATION_RAD, targetExtenderPosition = 0;
         switch(targetPreset) {
             case STOW:
-                armPosition = Constants.ArmConstants.MIN_ROTATION_RAD;
-                // extenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS; 
+                targetArmPosition = Constants.ArmConstants.MIN_ROTATION_RAD;
+                targetExtenderPosition = Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS; 
                 break;
             case LEVEL_TWO_POLE:
-                armPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
-                // extenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
+                targetArmPosition = Constants.ScoringConstants.LOW_CONE_NODE_ARM_ANGLE;        
+                targetExtenderPosition = Constants.ScoringConstants.LOW_CONE_NODE_EXTENDER_ROTATIONS; 
                 break;
             case LEVEL_THREE_POLE:
-                armPosition = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;      
-                // extenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
+                targetArmPosition = Constants.ScoringConstants.HIGH_CONE_NODE_ARM_ANGLE;      
+                targetExtenderPosition = Constants.ScoringConstants.HIGH_CONE_NODE_EXTENDER_ROTATIONS;
                 break;
             case LEVEL_THREE_PLATFORM:
-                armPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;  
-                // extenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
+                targetArmPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE;  
+                targetExtenderPosition = Constants.ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS;
                 break;
             case LEVEL_TWO_PLATFORM:
-                armPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
-                // extenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
+                targetArmPosition = Constants.ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE;    
+                targetExtenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
                 break;
             case DOUBLE_SUBSTATION:
-                armPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
-                // extenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
+                targetArmPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
+                targetExtenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
                 break;
             default:
                 break;
         }
-        setArmPosition(armPosition);
+        
+        presetCommand.scheduleNew(new SetArmAndExtender(this, targetArmPosition, targetExtenderPosition));
+
         System.out.printf("ArmSubsystem: Set arm position to %.3f, extender position is %.3f\n", armPosition, extenderPosition);
     }
 

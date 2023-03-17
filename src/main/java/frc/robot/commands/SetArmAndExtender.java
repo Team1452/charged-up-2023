@@ -1,35 +1,46 @@
 package frc.robot.commands;
 
+import java.security.AlgorithmParameterGeneratorSpi;
+
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import frc.robot.ArmSubsystem;
 import frc.robot.Constants;
+import frc.robot.Constants.ArmConstants;
+import frc.robot.Constants.ExtenderConstants;
+import frc.robot.Constants.ScoringConstants;
 
 public class SetArmAndExtender extends CommandBase {
-    double armPosition, extenderPosition;
+    double targetArmPosition, targetExtenderPosition;
     ArmSubsystem arm;
+    boolean stowing = true;
 
-    public SetArmAndExtender(ArmSubsystem arm, double armPercent, double extenderPercent) {
+    public SetArmAndExtender(ArmSubsystem arm, double armPosition, double extenderPosition) {
         this.arm = arm;
-        this.armPosition = armPercent/100 * Constants.ArmConstants.ARM_ROTATION_RANGE_ROT; 
-        this.extenderPosition = extenderPercent/100 * Constants.ExtenderConstants.EXTENDER_ROTATION_RANGE;
+        this.targetArmPosition = armPosition;
+        this.targetExtenderPosition = extenderPosition;
     }
 
     @Override
     public void initialize() {
-        arm.setArmPosition(this.armPosition);
-        arm.setExtenderPosition(this.extenderPosition);
+        // arm.setArmPosition(this.targetArmPosition);
+        arm.setExtenderPosition(0);
     }
 
     @Override
     public void execute() {
-        double armError = Math.abs(arm.getArmPosition() - armPosition);
-        double extenderError = Math.abs(arm.getExtenderPosition() - extenderPosition);
+        double armError = Math.abs(arm.getArmPosition() - targetArmPosition);
+        double extenderError = Math.abs(arm.getExtenderPosition() - targetExtenderPosition);
         System.out.println("Arm error: " + armError + "; extender error: " + extenderError);
+
+        if (stowing && arm.getExtenderPosition() < 1) {
+            stowing = false;
+            arm.setExtenderPosition(targetExtenderPosition);
+        }
     }
 
     @Override
     public boolean isFinished() {
-        return Math.abs(arm.getArmEncoder().getPosition() - armPosition) < 1
-            && Math.abs(arm.getExtenderEncoder().getPosition() - extenderPosition) < 1;
+        return Math.abs(arm.getArmEncoder().getPosition() - targetArmPosition) < ScoringConstants.ARM_TOLERANCE_DEGREES
+            && Math.abs(arm.getExtenderEncoder().getPosition() - targetExtenderPosition) < ScoringConstants.EXTENDER_TOLERANCE_ROTATIONS;
     }
 }

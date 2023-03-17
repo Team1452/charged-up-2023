@@ -7,6 +7,7 @@ import edu.wpi.first.math.util.Units;
 
 public class Constants {
     public static final double PERIOD_MS = 20;    
+    public static final double ROBOT_LENGTH_BUMPERS = Units.inchesToMeters(38);
 
     public static class CurrentLimits {
         public static int INTAKE_LIMIT = 35;
@@ -50,7 +51,10 @@ public class Constants {
         public static final double kBalanceToleranceDegrees = 0.1;
     }
 
-    static class ScoringConstants {
+    public static class ScoringConstants {
+        public static final double ARM_TOLERANCE_DEGREES = 0.1;
+        public static final double EXTENDER_TOLERANCE_ROTATIONS = 0.1;
+
         // public static double LOW_CONE_NODE_EXTENDER_ROTATIONS = 15.5;
         public static double LOW_CONE_NODE_EXTENDER_ROTATIONS = 2*15.5;
         public static double LOW_CONE_NODE_ARM_ANGLE = 71.12;
@@ -96,6 +100,11 @@ public class Constants {
 
     public static class ExtenderConstants {
         public static final double EXTENDER_GEARING = 1/5;
+
+        public static final double VULCRUM_HEIGHT = Units.inchesToMeters(24.75);
+        public static final double FRONT_TO_VULCRUM_DIAGONAL = Units.inchesToMeters(26.5);
+        public static final double VULCRUM_TO_FRONT_HORIZONTAL = Math.sqrt(Math.pow(FRONT_TO_VULCRUM_DIAGONAL, 2) - Math.pow(VULCRUM_HEIGHT, 2));
+        public static final double VULCRUM_TO_BACK_HORIZONTAL = ROBOT_LENGTH_BUMPERS - VULCRUM_TO_FRONT_HORIZONTAL;
 
         // public static final double MAX_EXTENDER_ROTATIONS = 33.55;
         public static final double MAX_EXTENDER_ROTATIONS = 67.1;
