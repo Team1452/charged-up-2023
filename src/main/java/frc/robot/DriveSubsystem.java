@@ -96,6 +96,7 @@ public class DriveSubsystem extends SubsystemBase {
       controller.setP(Constants.DriveConstants.kVelocityP);
       controller.setI(Constants.DriveConstants.kVelocityI);
       controller.setD(Constants.DriveConstants.kVelocityD);
+      controller.setFF(Constants.DriveConstants.kVelocityFF);
     }
 
     for (CANSparkMax motor : rightMotors) {
@@ -103,6 +104,7 @@ public class DriveSubsystem extends SubsystemBase {
       controller.setP(Constants.DriveConstants.kVelocityP);
       controller.setI(Constants.DriveConstants.kVelocityI);
       controller.setD(Constants.DriveConstants.kVelocityD);
+      controller.setFF(Constants.DriveConstants.kVelocityFF);
     }
   }
 
@@ -158,8 +160,8 @@ public class DriveSubsystem extends SubsystemBase {
     CANSparkMax[] motors = new CANSparkMax[canIds.length];
     for (int i = 0; i < canIds.length; i++) {
       motors[i] = new CANSparkMax(canIds[i], MotorType.kBrushless);
-      // motors[i].setIdleMode(IdleMode.kBrake); // Set idle mode to brake
-      motors[i].setIdleMode(IdleMode.kCoast); // Set idle mode to brake
+      motors[i].setIdleMode(IdleMode.kBrake); // Set idle mode to brake
+      // motors[i].setIdleMode(IdleMode.kCoast); // Set idle mode to brake
     }
     return motors;
   }

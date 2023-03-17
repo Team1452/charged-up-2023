@@ -69,6 +69,7 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.POVButton;
 import frc.robot.ArmSubsystem.ArmTargetChoice;
+import frc.robot.Constants.DriveConstants;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.SetArmAndExtender;
@@ -137,6 +138,11 @@ public class Robot extends TimedRobot {
   private File balancingPointsLog;
   private FileWriter balancingPointsLogWriter;
 
+  public static EditableParameter velocityP = new EditableParameter(tab, "VelocityP", DriveConstants.kVelocityP);
+  public static EditableParameter velocityI = new EditableParameter(tab, "VelocityI", DriveConstants.kVelocityI);
+  public static EditableParameter velocityD = new EditableParameter(tab, "VelocityD", DriveConstants.kVelocityD);
+  public static EditableParameter velocityFF = new EditableParameter(tab, "VelocityFF", DriveConstants.kVelocityFF);
+
   public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.043);
 
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
@@ -149,15 +155,15 @@ public class Robot extends TimedRobot {
   public static EditableParameter speedDeadzone = new EditableParameter(tab, "Speed Deadzone", 0.05);
   public static EditableParameter armScale = new EditableParameter(tab, "Arm Scale", 1);
   public static EditableParameter armFineScale = new EditableParameter(tab, "Arm Fine Scale", 0.5);
-  // public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
-  // public static EditableParameter z = new EditableParameter(tab, "z", 16);
-  // public static EditableParameter m = new EditableParameter(tab, "m", .3);
+  public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
+  public static EditableParameter z = new EditableParameter(tab, "z", 16);
+  public static EditableParameter m = new EditableParameter(tab, "m", .3);
 
-  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 50);
+  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 50, false);
 
   public static EditableParameter preciseLinearModeCoeff = new EditableParameter(tab, "Precision Mode Linear Coeff", 0.2);
   public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
-  // public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
+  public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
   public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
 
   public static EditableParameter ArmP = new EditableParameter(tab, "ArmP", 0.12);
@@ -176,7 +182,7 @@ public class Robot extends TimedRobot {
     turnPid.enableContinuousInput(-180, 180);
 
     // Add front camera
-    tab.addCamera("Arm Camera", Constants.VisionConstants.armCameraName, "photonvision.local:1182");
+    // tab.addCamera("Arm Camera", Constants.VisionConstants.armCameraName, "photonvision.local:1182");
 
     try {
       LocalTime time = LocalTime.now();
@@ -216,6 +222,11 @@ public class Robot extends TimedRobot {
     Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
     Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
     Constants.DriveConstants.kBalanceD = kBalanceD.getDouble(0);
+
+    Constants.DriveConstants.kVelocityP = velocityP.getValue();
+    Constants.DriveConstants.kVelocityI = velocityI.getValue();
+    Constants.DriveConstants.kVelocityD = velocityD.getValue();
+    Constants.DriveConstants.kVelocityFF = velocityFF.getValue();
 
     turnPid.setP(kTurnP.getDouble(0));
     turnPid.setI(kTurnI.getDouble(0));
@@ -417,29 +428,24 @@ public class Robot extends TimedRobot {
 
   boolean turnIsAbsolute = false;
 
-  private double velocityCurve(double x, double deadzone) {
-    // double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
-    // double value = (Math.pow(mag - r, 5) * z) + m;
-    // return Math.copySign(value, x);
-    double mag = Utils.deadzone(x, deadzone);
-    return velocityCurveScalingFactor.getValue() * Math.copySign(Math.pow(mag, velocityCurveExponent.getValue()), x);
+  private double velocityCurve(double x, double deadzone, double r, double z, double m) {
+    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
+    double value = (Math.pow(mag - r, 5) * z) + m;
+    return Math.copySign(value, x);
   }
 
-  private double turnCurve(double x, double deadzone) {
-    // double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
-    // double value = scale*Math.pow(mag, factor);
-    // return Math.copySign(value, x);
-    double mag = Utils.deadzone(x, deadzone);
-    return turnCurveScalingFactor.getValue() * Math.copySign(Math.pow(mag, turnCurveExponent.getValue()), x);
+  private double turnCurve(double x, double deadzone, double scale, double factor) {
+    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
+    double value = scale*Math.pow(mag, factor);
+    return Math.copySign(value, x);
   }
-  // private double turningCurve(double x, double deadzone, double r, double z,
-  // double m, double b) {
-  // double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
-  // double value = -(((Math.pow(-mag * b, 5.0) * z) + Math.pow(-mag * b + r, 4) *
-  // z + Math.pow(-mag * b + r, 3.0) * z + m));
-  // return Math.copySign(value, x);
-  // }
-  // Joystick joystick = new Joystick(4);
+  private double turningCurve(double x, double deadzone, double r, double z,
+  double m, double b) {
+    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
+    double value = -(((Math.pow(-mag * b, 5.0) * z) + Math.pow(-mag * b + r, 4) *
+    z + Math.pow(-mag * b + r, 3.0) * z + m));
+    return Math.copySign(value, x);
+  }
   boolean preciseLinearToggle = false; // TODO: Move this to separate class
   long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
 
@@ -449,20 +455,20 @@ public class Robot extends TimedRobot {
 
     // double throttle = 1-(joystick.getThrottle() + 1)/2;
     
-    double jx = driveController.getRightX();
+    double jx = driveController.getLeftX();
     double jy = -driveController.getRightY();
 
-    // double rValue = r.getValue();
-    // double zValue = z.getValue();
-    // double mValue = m.getValue();
+    double rValue = r.getValue();
+    double zValue = z.getValue();
+    double mValue = m.getValue();
     double speedDeadzoneValue = speedDeadzone.getValue();
     double fineScaleValue = fineScale.getValue();
-    // double scaleValue = turnScale.getValue();
+    double turnScaleValue = turnScale.getValue();
     double turnDeadzoneValue = turnDeadzone.getValue();
     
     double speed = preciseLinearToggle
       ? preciseLinearModeCoeff.getValue() * Utils.deadzone(jy, speedDeadzoneValue)
-      : velocityCurve(jy, speedDeadzoneValue);
+      : velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
     
     double turn;
     double turnFactor = 5;
@@ -474,10 +480,10 @@ public class Robot extends TimedRobot {
       turn = preciseLinearModeCoeff.getValue() * Utils.deadzone(jx, turnDeadzoneValue);
     } else {
       if (driveController.getLeftTriggerAxis() < 0.5) {
-        turn = turnCurve(jx, turnDeadzoneValue);
+        turn = turnCurve(jx, turnDeadzoneValue, turnScaleValue, turnFactor );
       } else {
         System.out.println("Fine Mode Enabled");
-        turn = turnCurve(jx, turnDeadzoneValue);
+        turn = turnCurve(jx, turnDeadzoneValue, fineScaleValue, fineTurnFactor);
       }
     }
     
@@ -629,7 +635,6 @@ public class Robot extends TimedRobot {
     }
 
     CommandScheduler.getInstance().run();
-    // target = armSubSys.update();
   }
 
 

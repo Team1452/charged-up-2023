@@ -23,9 +23,10 @@ public class Constants {
         public static final double kGearRatio = 1/12.75;
         public static final double kDistancePerPulse = kGearRatio * 2 * Math.PI * kWheelRadius;
 
-        public static double kVelocityP = 0.001;
+        public static double kVelocityP = 0;
         public static double kVelocityI = 0;
         public static double kVelocityD = 0;
+        public static double kVelocityFF = 5;
 
         public static double kMoveP = 1.0;
         public static double kMoveI = 0.012;

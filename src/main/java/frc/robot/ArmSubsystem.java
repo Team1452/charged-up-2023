@@ -122,6 +122,7 @@ public class ArmSubsystem {
         // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             extenderPosition += extenderScaleConstant*percentChange*0.01;
         // }
+        setArmPosition(extenderPosition + extenderScaleConstant*percentChange*0.01);
     }
 
     public void changeArmPosition(double percentChange){
@@ -129,7 +130,7 @@ public class ArmSubsystem {
         // if(percentChange > 0)
         //     targetChoice = ArmTargetChoice.MANUAL_CONTROL;
         // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
-            armPosition += armScaleConstant*percentChange*0.01;
+        setArmPosition(armPosition + armScaleConstant*percentChange*0.01);
     }
 
     public void setIdleMode(CANSparkMax.IdleMode mode){
