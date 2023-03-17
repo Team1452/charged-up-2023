@@ -2,10 +2,10 @@ package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
 
-public class TeleopCommand {
+public class DynamicCommand {
     private Command command = null;
 
-    public TeleopCommand() {}
+    public DynamicCommand() {}
 
     public boolean isActive() {
         return command != null && command.isScheduled();

@@ -73,7 +73,7 @@ import frc.robot.Constants.DriveConstants;
 import frc.robot.commands.Balance;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.SetArmAndExtender;
-import frc.robot.commands.TeleopCommand;
+import frc.robot.commands.DynamicCommand;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.EditableParameter;
 import frc.robot.util.Utils;
@@ -160,7 +160,7 @@ public class Robot extends TimedRobot {
   public static EditableParameter z = new EditableParameter(tab, "z", 16);
   public static EditableParameter m = new EditableParameter(tab, "m", .3);
 
-  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 50, false);
+  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 80, false);
 
   public static EditableParameter preciseLinearModeCoeff = new EditableParameter(tab, "Precision Mode Linear Coeff", 0.2);
   public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
@@ -407,6 +407,7 @@ public class Robot extends TimedRobot {
     teleopTargetAngle = drive.getHeading();
     armSubSys.reset();
     // lastPov = joystick.getPOV();
+    compressor.disable();
   }
 
   @Override
@@ -452,7 +453,7 @@ public class Robot extends TimedRobot {
   boolean preciseLinearToggle = false; // TODO: Move this to separate class
   long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
 
-  TeleopCommand presetCommand = new TeleopCommand();
+  DynamicCommand presetCommand = new DynamicCommand();
 
   @Override
   public void teleopPeriodic() {
@@ -581,34 +582,33 @@ public class Robot extends TimedRobot {
       System.out.println("Robot: Clamping intake current at: " + intake.getOutputCurrent());
       intake.set(0);
     }
-    // if (compressorEnabled) {
-    //   // Calculate pressure from analog input
-    //   // (from REV analog sensor datasheet)
-    //   double vOut = pressureSensor.getAverageVoltage();
-    //   double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 15; // Should be 25 but 15 works?
+    if (compressorEnabled) {
+      // Calculate pressure from analog input
+      // (from REV analog sensor datasheet)
+      double vOut = pressureSensor.getAverageVoltage();
+      double pressure = 250 * (vOut / Constants.PneumaticConstants.ANALOG_VCC) - 15; // Should be 25 but 15 works?
 
-    //   System.out.print("Compressor enabled; voltage: " + compressor.getAnalogVoltage() + "; estimated pressure: " + pressure);
+      System.out.print("Compressor enabled; voltage: " + compressor.getAnalogVoltage() + "; estimated pressure: " + pressure);
 
-    //   if (pressure < Constants.PneumaticConstants.MAX_PRESSURE) {
-    //     System.out.print("; COMPRESSOR IS ON\n");
-    //     compressor.enableDigital();
-    //   } else {
-    //     System.out.print("; COMPRESSOR IS OFF\n");
-    //     compressor.disable();
-    //   }
-    // } else {
-    //   compressor.disable();
-    // }
+      if (pressure < Constants.PneumaticConstants.MAX_PRESSURE) {
+        System.out.print("; COMPRESSOR IS ON\n");
+        compressor.enableDigital();
+      } else {
+        System.out.print("; COMPRESSOR IS OFF\n");
+        compressor.disable();
+      }
+    } else {
+      compressor.disable();
+    }
 
-    // // if (controller.getRawButtonPressed(7)) {
-    // if (!lastAButtonStatus && controller.getAButton()) {
-    //   compressorEnabled = !compressorEnabled;
-    //   if (compressorEnabled) {
-    //     System.out.print("COMPRESSOR IS NOW ON\n");
-    //   } else {
-    //     System.out.print("COMPRESSOR IS NOW OFF\n");
-    //   }
-    // }
+    if (!lastAButtonStatus && driveController.getAButton()) {
+      compressorEnabled = !compressorEnabled;
+      if (compressorEnabled) {
+        System.out.print("COMPRESSOR IS NOW ON\n");
+      } else {
+        System.out.print("COMPRESSOR IS NOW OFF\n");
+      }
+    }
 
 
 
@@ -626,18 +626,18 @@ public class Robot extends TimedRobot {
     //   }
     // }
 
-    lastAButtonStatus = controller.getAButton();
+    lastAButtonStatus = driveController.getAButton();
     lastBButtonStatus = controller.getBButton();
 
-    if (driveController.getRightStickButtonPressed()) {
-      if (drive.isUsingVelocity()) {
-        drive.disablePIDControl();
-        System.out.println("Robot: Using voltage control");
-      } else {
-        drive.enableVelocityControl();
-        System.out.println("Robot: Using velocity control");
-      }
-    }
+  //   if (driveController.getRightStickButtonPressed()) {
+  //     if (drive.isUsingVelocity()) {
+  //       drive.disablePIDControl();
+  //       System.out.println("Robot: Using voltage control");
+  //     } else {
+  //       drive.enableVelocityControl();
+  //       System.out.println("Robot: Using velocity control");
+  //     }
+  //   }
   }
 
 

@@ -10,7 +10,7 @@ public class Constants {
     public static final double ROBOT_LENGTH_BUMPERS = Units.inchesToMeters(38);
 
     public static class CurrentLimits {
-        public static int INTAKE_LIMIT = 35;
+        public static int INTAKE_LIMIT = 50;
     }
 
     public static class DriveConstants {
