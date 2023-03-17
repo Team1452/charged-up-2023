@@ -10,13 +10,13 @@ public class Constants {
     public static final double ROBOT_LENGTH_BUMPERS = Units.inchesToMeters(38);
 
     public static class CurrentLimits {
-        public static int INTAKE_LIMIT = 50;
+        public static int INTAKE_LIMIT = 80;
     }
 
     public static class DriveConstants {
         public static double kMaxVoltage = 0.8;
         public static final double kMaxDriveVoltage = 1.0;
-        public static final double kMaxAutonVoltage = 0.25;
+        public static final double kMaxAutonVoltage = 0.2;
         public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
         public static final double kTrackWidth = 0.381 * 2; // meters

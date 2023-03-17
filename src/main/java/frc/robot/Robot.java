@@ -144,7 +144,7 @@ public class Robot extends TimedRobot {
   public static EditableParameter velocityD = new EditableParameter(tab, "VelocityD", DriveConstants.kVelocityD);
   public static EditableParameter velocityFF = new EditableParameter(tab, "VelocityFF", DriveConstants.kVelocityFF);
 
-  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.043);
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.04);
 
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
 
@@ -361,6 +361,21 @@ public class Robot extends TimedRobot {
             .withPitchExitThreshold(10)
             .withTimeout(5),
         new Balance(drive).withTimeout(9)).andThen(() -> drive.holdPosition());
+
+    SequentialCommandGroup climbAndExit = new SequentialCommandGroup(
+      new MoveDistance(5, drive)
+        .withPitchExitThreshold(10)
+        .withTimeout(5),
+      new Balance(drive).withTimeout(9)
+    ).andThen(() -> drive.holdPosition());
+
+    // auton = new Balance(drive).andThen(() -> drive.holdPosition());
+    auton = climbAndExit;
+    auton.schedule();
+
+
+    Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
+    drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());
     auton = flipConeAndExitCommunityAndBackUpAndBalance;
