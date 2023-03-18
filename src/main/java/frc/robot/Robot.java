@@ -607,13 +607,15 @@ public class Robot extends TimedRobot {
     // TODO: Figure out expected current empty and w/ object and use
     // properly. Disable motor if current goes above and update dashboard
     // if (intake.getOutputCurrent() < currentLimitClaw.getValue()) {
+      int intakeDirection = 0;
       if (controller.getYButton()) {
-        intake.set(intakeSpeed.getValue());
+        intakeDirection = 1;
       } else if (controller.getAButton()) {
-        intake.set(-intakeSpeed.getValue());
-      } else {
-        intake.set(0);
+        intakeDirection = -1;
+      } else if (controller.getXButton()) {
+        intakeDirection = 0;
       }
+      intake.set(intakeDirection*intakeSpeed.getValue());
     // } else {
     //   System.out.println("Robot: Clamping intake current at: " + intake.getOutputCurrent());
     //   intake.set(0);
