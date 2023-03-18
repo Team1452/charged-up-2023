@@ -69,9 +69,14 @@ import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.POVButton;
 import frc.robot.ArmSubsystem.ArmTargetChoice;
+import frc.robot.Constants.ArmConstants;
+import frc.robot.Constants.CurrentLimits;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.DriveSubsystem.ControlMode;
 import frc.robot.commands.Balance;
+import frc.robot.commands.CalibrateArm;
 import frc.robot.commands.MoveDistance;
+import frc.robot.commands.SetArm;
 import frc.robot.commands.SetArmAndExtender;
 import frc.robot.commands.DynamicCommand;
 import frc.robot.commands.TurnToAngle;
@@ -139,6 +144,9 @@ public class Robot extends TimedRobot {
   private File balancingPointsLog;
   private FileWriter balancingPointsLogWriter;
 
+  public static EditableParameter armCurrentLimit = new EditableParameter(tab, "Arm Current Limit", CurrentLimits.ARM_LIMIT);
+  public static EditableParameter stepSizeDegrees = new EditableParameter(tab, "Step Size Degrees", CalibrateArm.STEP_SIZE_DEGREES);
+
   public static EditableParameter velocityP = new EditableParameter(tab, "VelocityP", DriveConstants.kVelocityP);
   public static EditableParameter velocityI = new EditableParameter(tab, "VelocityI", DriveConstants.kVelocityI);
   public static EditableParameter velocityD = new EditableParameter(tab, "VelocityD", DriveConstants.kVelocityD);
@@ -163,7 +171,7 @@ public class Robot extends TimedRobot {
   public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 80, false);
 
   public static EditableParameter preciseLinearModeCoeff = new EditableParameter(tab, "Precision Mode Linear Coeff", 0.2);
-  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.001);
+  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.01);
   public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
   public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
 
@@ -177,9 +185,11 @@ public class Robot extends TimedRobot {
 
   public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.7);
 
+  public static DashboardServer server = new DashboardServer();
+
   @Override
   public void robotInit() {
-    intake.setSmartCurrentLimit(Constants.CurrentLimits.INTAKE_LIMIT);
+    // intake.setSmartCurrentLimit(Constants.CurrentLimits.INTAKE_LIMIT);
     turnPid.enableContinuousInput(-180, 180);
 
     // Add front camera
@@ -215,6 +225,10 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     drive.updateOdometry();
+    drive.updatePIDControl();
+
+    Constants.CurrentLimits.ARM_LIMIT = armCurrentLimit.getValue();
+    CalibrateArm.STEP_SIZE_DEGREES = stepSizeDegrees.getValue();
 
     CommandScheduler.getInstance().run();
 
@@ -362,28 +376,26 @@ public class Robot extends TimedRobot {
             .withTimeout(5),
         new Balance(drive).withTimeout(9)).andThen(() -> drive.holdPosition());
 
-    SequentialCommandGroup climbAndExit = new SequentialCommandGroup(
-      new MoveDistance(5, drive)
+    SequentialCommandGroup flipCone = new SequentialCommandGroup(
+      new SetArm(armSubSys, 50),
+      new SetArm(armSubSys, 0)
+    );
+
+    SequentialCommandGroup flipConeClimbAndExit = new SequentialCommandGroup(
+      flipCone,
+      new MoveDistance(1.8, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive).withTimeout(9)
     ).andThen(() -> drive.holdPosition());
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());
-    auton = climbAndExit;
-    auton.schedule();
-
-
-    Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
-    drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
-
-    // auton = new Balance(drive).andThen(() -> drive.holdPosition());
-    auton = flipConeAndExitCommunityAndBackUpAndBalance;
+    // auton = climbAndExit;
+    auton = flipConeClimbAndExit;
     auton.schedule();
 
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
     drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
-    // new CenterPhotonVisionTarget(drive).schedule();
   }
 
   @Override
@@ -410,7 +422,6 @@ public class Robot extends TimedRobot {
 
   double teleopTargetAngle = 0;
   boolean teleopTargetingAngle = false;
-
   double lastPov = -1;
 
   @Override
@@ -448,23 +459,20 @@ public class Robot extends TimedRobot {
   boolean turnIsAbsolute = false;
 
   private double velocityCurve(double x, double deadzone, double r, double z, double m) {
-    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
+    double mag = Utils.deadzone(x, deadzone);
     double value = (Math.pow(mag - r, 5) * z) + m;
     return Math.copySign(value, x);
   }
 
   private double turnCurve(double x, double deadzone, double scale, double factor) {
-    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
-    double value = scale*Math.pow(mag, factor);
-    return Math.copySign(value, x);
+    double value = x*scale;
+    return Utils.deadzone(Math.copySign(value, x), deadzone);
   }
-  private double turningCurve(double x, double deadzone, double r, double z,
-  double m, double b) {
-    double mag = Math.max(Math.abs(x) - deadzone, 0) * 1/(1 - deadzone);
-    double value = -(((Math.pow(-mag * b, 5.0) * z) + Math.pow(-mag * b + r, 4) *
-    z + Math.pow(-mag * b + r, 3.0) * z + m));
-    return Math.copySign(value, x);
-  }
+  //private double turnCurve(double x, double deadzone, double scale, double factor) {
+  //  double mag = Math.max(Math.abs(x) - deadzone, 0) * 1 / (1 - deadzone);
+  //  double value = scale*Math.pow(mag, factor);
+  //  return Math.copySign(value, x);
+  //}
   boolean preciseLinearToggle = false; // TODO: Move this to separate class
   long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
 
@@ -501,7 +509,7 @@ public class Robot extends TimedRobot {
       turn = preciseLinearModeCoeff.getValue() * Utils.deadzone(jx, turnDeadzoneValue);
     } else {
       if (driveController.getLeftTriggerAxis() < 0.5) {
-        turn = turnCurve(jx, turnDeadzoneValue, turnScaleValue, turnFactor );
+        turn = turnCurve(jx, turnDeadzoneValue, turnScaleValue, turnFactor);
       } else {
         System.out.println("Fine Mode Enabled");
         turn = turnCurve(jx, turnDeadzoneValue, fineScaleValue, fineTurnFactor);
@@ -518,6 +526,14 @@ public class Robot extends TimedRobot {
       //System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
     }
 
+    if (driveController.getBackButtonPressed()) {
+      drive.setControlMode(drive.getControlMode() == ControlMode.VOLTAGE 
+        ? ControlMode.VELOCITY 
+        : ControlMode.VOLTAGE
+      );
+    }
+    if(driveController.getStartButton())
+        armSubSys.calibrate();
     if(driveController.getLeftStickButton())
       speed = jx < 1e-6 ? 0 : Math.copySign(0.05, jx);
     if(driveController.getRightStickButton())
@@ -538,11 +554,13 @@ public class Robot extends TimedRobot {
 
     // Thumb button on top of joystick
     // if (driveController.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
-    if (controller.getPOV() == 0) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION);
-    if (controller.getPOV() == 180) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.STOW);
+    
+    // TODO: Get presets to work
+    // if (controller.getPOV() == 0) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION);
+    // if (controller.getPOV() == 180) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.STOW);
 
-    if (controller.getPOV() == 90) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM);
-    if (controller.getPOV() == 270) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM);
+    // if (controller.getPOV() == 90) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM);
+    // if (controller.getPOV() == 270) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM);
 
     if (mechanismControllerButtons.getXButtonPressed()) {
       armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE);
@@ -581,11 +599,14 @@ public class Robot extends TimedRobot {
     double armScaleValue = armScale.getValue();
     if(controller.getAButton())
       armScaleValue = armFineScale.getValue();
-    armSubSys.changeArmPosition( (controller.getRightTriggerAxis() - controller.getLeftTriggerAxis())*armScaleValue );
+    armSubSys.changeArmPosition((controller.getRightTriggerAxis() - controller.getLeftTriggerAxis())*armScaleValue);
+    System.out.printf("ArmSubsystem: Arm current is at: %.3f amps\n", armSubSys.getArmCurrent());
 
     // Intake    
     
-    if (intake.getOutputCurrent() < currentLimitClaw.getValue()) {
+    // TODO: Figure out expected current empty and w/ object and use
+    // properly. Disable motor if current goes above and update dashboard
+    // if (intake.getOutputCurrent() < currentLimitClaw.getValue()) {
       if (controller.getYButton()) {
         intake.set(intakeSpeed.getValue());
       } else if (controller.getAButton()) {
@@ -593,10 +614,10 @@ public class Robot extends TimedRobot {
       } else {
         intake.set(0);
       }
-    } else {
-      System.out.println("Robot: Clamping intake current at: " + intake.getOutputCurrent());
-      intake.set(0);
-    }
+    // } else {
+    //   System.out.println("Robot: Clamping intake current at: " + intake.getOutputCurrent());
+    //   intake.set(0);
+    // }
     if (compressorEnabled) {
       // Calculate pressure from analog input
       // (from REV analog sensor datasheet)

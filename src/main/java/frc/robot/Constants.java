@@ -11,6 +11,7 @@ public class Constants {
 
     public static class CurrentLimits {
         public static int INTAKE_LIMIT = 80;
+        public static double ARM_LIMIT = 25;
     }
 
     public static class DriveConstants {
@@ -29,6 +30,10 @@ public class Constants {
         public static double kVelocityD = 0;
         public static double kVelocityFF = 5;
 
+        public static double kDriveP = 0.05;
+        public static double kDriveI = 0;
+        public static double kDriveD = 0;
+
         public static double kMoveP = 1.0;
         public static double kMoveI = 0.012;
         public static double kMoveD = 0.0001;
@@ -45,9 +50,14 @@ public class Constants {
         public static double kTurnD = 0.001;
         public static final double kTurnAngleToleranceDegrees = 1;
 
-        public static double kBalanceP = 0.008;
-        public static double kBalanceI = 0.0005;
+        // public static double kBalanceP = 0.008;
+        // public static double kBalanceI = 0.0005;
+        // public static double kBalanceD = 0;
+
+        public static double kBalanceP = 0.009;
+        public static double kBalanceI = 0.001;
         public static double kBalanceD = 0;
+
         public static final double kBalanceToleranceDegrees = 0.1;
     }
 

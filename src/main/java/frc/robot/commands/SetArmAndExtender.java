@@ -32,7 +32,7 @@ public class SetArmAndExtender extends CommandBase {
         double extenderError = Math.abs(arm.getExtenderPosition() - targetExtenderPosition);
         System.out.println("Arm error: " + armError + "; extender error: " + extenderError);
 
-        if (stowing && arm.getExtenderPosition() < 1) {
+        if (stowing && arm.getExtenderEncoder().getPosition() < 1) {
             stowing = false;
             arm.setExtenderPosition(targetExtenderPosition);
         }
@@ -40,7 +40,8 @@ public class SetArmAndExtender extends CommandBase {
 
     @Override
     public boolean isFinished() {
-        return Math.abs(arm.getArmEncoder().getPosition() - targetArmPosition) < ScoringConstants.ARM_TOLERANCE_DEGREES
-            && Math.abs(arm.getExtenderEncoder().getPosition() - targetExtenderPosition) < ScoringConstants.EXTENDER_TOLERANCE_ROTATIONS;
+        // return Math.abs(arm.getArmEncoder().getPosition() - targetArmPosition) < ScoringConstants.ARM_TOLERANCE_DEGREES
+        //     && Math.abs(arm.getExtenderEncoder().getPosition() - targetExtenderPosition) < ScoringConstants.EXTENDER_TOLERANCE_ROTATIONS;
+        return false;
     }
 }

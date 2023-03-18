@@ -8,7 +8,11 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import frc.robot.Constants.CurrentLimits;
 import frc.robot.Constants.FieldConstants;
+import frc.robot.commands.CalibrateArm;
+import frc.robot.commands.CalibrateExtender;
 import frc.robot.commands.DynamicCommand;
 import frc.robot.commands.SetArmAndExtender;
 public class ArmSubsystem {
@@ -45,7 +49,8 @@ public class ArmSubsystem {
     private double armX;
     final double extenderScaleConstant = (Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS - Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS); 
 
-    private DynamicCommand presetCommand;
+    private DynamicCommand presetCommand = new DynamicCommand();
+    private DynamicCommand calibrationCommand = new DynamicCommand();
 
     private double getArmAngleRadians() {
         return armPosition/(Constants.ArmConstants.MAX_ROTATION_ROT - Constants.ArmConstants.MIN_ROTATION_ROT) * Constants.ArmConstants.RANGE_RAD + Constants.ArmConstants.START_ANGLE;
@@ -136,6 +141,18 @@ public class ArmSubsystem {
         setArmPosition(armPosition + armScaleConstant*percentChange*0.01);
     }
 
+    public void rawArmChange(double percentChange){
+        updateSavedPositions();
+        this.armPosition += armScaleConstant*percentChange*0.01;
+        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
+    }
+
+    public void rawExtenderCurrent(double percentChange){
+        updateSavedPositions();
+        this.extenderPosition += armScaleConstant*percentChange*0.01;
+        extenderPID.setReference(extenderPosition, CANSparkMax.ControlType.kPosition);
+    }
+
     public void setIdleMode(CANSparkMax.IdleMode mode){
         arm.setIdleMode(mode);
         extender.setIdleMode(mode);
@@ -197,9 +214,6 @@ public class ArmSubsystem {
         // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) {
             // System.out.printf("ArmSubsystem: Manual control: Setting extender to %.3f, at %.3f. Setting arm to %.3f, is %.3f\n", extenderPosition, extenderEncoder.getPosition(), armPosition, armEncoder.getPosition());
         // }
-
-        setExtenderPosition(extenderPosition);
-        setArmPosition(armPosition);
     }
 
     public void setPreset(ArmTargetChoice targetPreset) {
@@ -239,18 +253,43 @@ public class ArmSubsystem {
     }
 
     public void setExtenderPosition(double extenderPosition) {
+        if (calibrationCommand.isActive()) return;
         this.extenderPosition = MathUtil.clamp(extenderPosition, Constants.ExtenderConstants.MIN_EXTENDER_ROTATIONS, Constants.ExtenderConstants.MAX_EXTENDER_ROTATIONS);
         extenderPID.setReference(-extenderPosition, CANSparkMax.ControlType.kPosition);
     }
 
     public void setArmPosition(double armPosition) {
-        this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        if (calibrationCommand.isActive()) return;
+        // this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        this.armPosition = armPosition;
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
     }
-    
+
+    public void calibrate(){
+        System.out.printf("ArmSubsystem: Calibrating with current limit: %.3f amps\n", CurrentLimits.ARM_LIMIT);
+        if (!calibrationCommand.isActive()) {
+            calibrationCommand.scheduleNew(
+                new SequentialCommandGroup(
+                    new CalibrateExtender(this),
+                    new CalibrateArm(this)
+                )
+                .withTimeout(5)
+                .andThen(() -> reset())
+            );
+        }
+    }
+
     public double getArmHeight(){
         return armY;
     }
+    public double getArmCurrent(){
+        return arm.getOutputCurrent();
+    }
+
+    public double getExtenderCurrent(){
+        return extender.getOutputCurrent();
+    }
+
     public double getArmDistance(){
         return armX;
     }

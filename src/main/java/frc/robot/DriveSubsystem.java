@@ -16,6 +16,7 @@ import com.revrobotics.CANSparkMax.ControlType;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
@@ -23,6 +24,8 @@ import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.util.Utils;
+
 import org.photonvision.EstimatedRobotPose;
 import com.revrobotics.CANSparkMax;
 
@@ -61,6 +64,24 @@ public class DriveSubsystem extends SubsystemBase {
   private double maxSpeed = Constants.DriveConstants.kMaxSpeed; // m/s
 
   private boolean usingVelocity = false;
+
+  private PIDController leftVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
+  private PIDController rightVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
+
+  public enum ControlMode {
+    VOLTAGE,
+    VELOCITY
+  }
+
+  private ControlMode controlMode = ControlMode.VOLTAGE;
+
+  public ControlMode getControlMode() {
+      return controlMode;
+  }
+
+  public void setControlMode(ControlMode controlMode) {
+      this.controlMode = controlMode;
+  }
 
   public boolean isUsingVelocity() {
       return usingVelocity;
@@ -208,9 +229,29 @@ public class DriveSubsystem extends SubsystemBase {
   private void differentialDriveVoltage(double speed, double turn) {
     // Positive turn turns right, negative turns left
     // System.out.printf("DriveSubsystem: Max voltage is " + maxVoltage + "; ");
-    setWithLimit(left, speed + turn);
-    setWithLimit(right, speed - turn);
-    // System.out.println();
+    if(speed > 0.6){
+      for(CANSparkMax m : leftMotors)
+        m.setIdleMode(IdleMode.kCoast);
+      for(CANSparkMax m : rightMotors)
+        m.setIdleMode(IdleMode.kCoast);
+
+    }else{
+      for(CANSparkMax m : leftMotors)
+        m.setIdleMode(IdleMode.kBrake);
+      for(CANSparkMax m : rightMotors)
+        m.setIdleMode(IdleMode.kBrake);
+    }
+
+    double leftTargetVoltage = Utils.limitMagnitude(speed + turn, maxVoltage);
+    double rightTargetVoltage = Utils.limitMagnitude(speed - turn, maxVoltage);
+
+    leftVoltageController.setSetpoint(leftTargetVoltage);
+    rightVoltageController.setSetpoint(rightTargetVoltage);
+
+    if (controlMode == ControlMode.VOLTAGE) {
+      left.set(leftTargetVoltage);
+      right.set(rightTargetVoltage);
+    }
   }
 
   public double getMaxSpeed() {
@@ -259,6 +300,16 @@ public class DriveSubsystem extends SubsystemBase {
       return -position;
     else
       return position;
+  }
+
+  public void updatePIDControl() {
+    double leftOutput = leftVoltageController.calculate(left.get());
+    double rightOutput = rightVoltageController.calculate(right.get());
+    
+    if (controlMode == ControlMode.VELOCITY) {
+      left.set(left.get() + leftOutput);
+      right.set(right.get() + rightOutput);
+    }
   }
 
   /** Updates the field-relative position. */

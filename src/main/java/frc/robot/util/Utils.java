@@ -11,6 +11,10 @@ public class Utils {
     }
 
     public static double deadzone(double value, double deadzone) {
-        return Math.copySign(Math.max(0, Math.abs(value) - deadzone), value);
+        return Math.copySign(Math.max(0, Math.abs(value) - deadzone), value) * 1/(1 - deadzone);
+    }
+
+    public static double limitMagnitude(double value, double limit) {
+        return Math.copySign(Math.min(Math.abs(value), limit), value);
     }
 }

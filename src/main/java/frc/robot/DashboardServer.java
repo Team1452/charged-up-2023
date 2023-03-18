@@ -34,39 +34,40 @@ public class DashboardServer {
                 clients.add(ctx);
             });
 
-            ws.onMessage(msg -> {
-                JSONObject object = new JSONObject(msg);
-                String eventString = object.getString("event");
-                EventType event;
-                try {
-                    event = EventType.valueOf(eventString);
-                } catch (Exception err) {
-                    // Throw error
-                    return;
-                }
+            ws.onMessage(ctx -> {
+                ctx.send("Testing: " + Math.random());
+                // JSONObject object = new JSONObject(msg);
+                // String eventString = object.getString("event");
+                // EventType event;
+                // try {
+                //     event = EventType.valueOf(eventString);
+                // } catch (Exception err) {
+                //     // Throw error
+                //     return;
+                // }
 
-                switch (event) {
-                    case PARAMETER_UPDATE: {
-                        String name = object.getString("name");
-                        ValueType valueType = ValueType.DOUBLE;
-                        try {
-                            String type = object.getString("value_type");
-                            valueType = ValueType.valueOf(type);
-                        } catch (Exception err) {
-                            return;
-                        }
+                // switch (event) {
+                //     case PARAMETER_UPDATE: {
+                //         String name = object.getString("name");
+                //         ValueType valueType = ValueType.DOUBLE;
+                //         try {
+                //             String type = object.getString("value_type");
+                //             valueType = ValueType.valueOf(type);
+                //         } catch (Exception err) {
+                //             return;
+                //         }
 
-                        switch (valueType) {
-                            case DOUBLE: {
-                                double value = object.getDouble("value");
-                                parameters.put(name, value);
-                                break;
-                            }
-                        }
+                //         switch (valueType) {
+                //             case DOUBLE: {
+                //                 double value = object.getDouble("value");
+                //                 parameters.put(name, value);
+                //                 break;
+                //             }
+                //         }
 
-                        break;
-                    } 
-                }
+                //         break;
+                //     } 
+                // }
             });
 
             ws.onClose(ctx -> {
