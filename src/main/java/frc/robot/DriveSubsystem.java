@@ -65,8 +65,14 @@ public class DriveSubsystem extends SubsystemBase {
 
   private boolean usingVelocity = false;
 
-  private PIDController leftVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
-  private PIDController rightVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
+  // private PIDController leftVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
+  // private PIDController rightVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
+
+  private double leftTargetVoltage = 0;
+  private double rightTargetVoltage = 0;
+
+  private double driveAveragingCoeff = 0.05;
+  private double turnAveragingCoeff = 0.5;
 
   public enum ControlMode {
     VOLTAGE,
@@ -74,6 +80,14 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   private ControlMode controlMode = ControlMode.VOLTAGE;
+
+  public void setDriveAveragingCoeff(double averagingCoeff) {
+      this.driveAveragingCoeff = averagingCoeff;
+  }
+
+  public void setTurnAveragingCoeff(double averagingCoeff) {
+      this.turnAveragingCoeff = averagingCoeff;
+  }
 
   public ControlMode getControlMode() {
       return controlMode;
@@ -246,8 +260,8 @@ public class DriveSubsystem extends SubsystemBase {
     double leftTargetVoltage = Utils.limitMagnitude(speed + turn, maxVoltage);
     double rightTargetVoltage = Utils.limitMagnitude(speed - turn, maxVoltage);
 
-    leftVoltageController.setSetpoint(leftTargetVoltage);
-    rightVoltageController.setSetpoint(rightTargetVoltage);
+    this.leftTargetVoltage = leftTargetVoltage;
+    this.rightTargetVoltage = rightTargetVoltage;
 
     if (controlMode == ControlMode.VOLTAGE) {
       left.set(leftTargetVoltage);
@@ -303,13 +317,15 @@ public class DriveSubsystem extends SubsystemBase {
       return position;
   }
 
-  public void updatePIDControl() {
-    double leftOutput = leftVoltageController.calculate(left.get());
-    double rightOutput = rightVoltageController.calculate(right.get());
-    
+  public void updateVelocityControl() {
     if (controlMode == ControlMode.VELOCITY) {
-      left.set(left.get() + leftOutput);
-      right.set(right.get() + rightOutput);
+      double averagingCoeff = 
+        Math.abs(leftTargetVoltage - rightTargetVoltage)/Math.abs(leftTargetVoltage) > 0.5
+          ? turnAveragingCoeff
+          : driveAveragingCoeff;
+
+      left.set((1 - averagingCoeff) * left.get() + averagingCoeff * leftTargetVoltage);
+      right.set((1 - averagingCoeff) * right.get() + averagingCoeff * rightTargetVoltage);
     }
   }
 

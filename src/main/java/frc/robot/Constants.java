@@ -30,9 +30,8 @@ public class Constants {
         public static double kVelocityD = 0;
         public static double kVelocityFF = 5;
 
-        public static double kDriveP = 0.05;
-        public static double kDriveI = 0;
-        public static double kDriveD = 0;
+        public static double kSpeedAveragingCoeff = 0.1;
+        public static double kTurnAveragingCoeff = 0.5;
 
         public static double kMoveP = 1.0;
         public static double kMoveI = 0.012;

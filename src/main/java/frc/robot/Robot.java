@@ -119,7 +119,7 @@ public class Robot extends TimedRobot {
   private final XboxController controller = new XboxController(0);
   private final XboxController driveController = new XboxController(1);
 
-  private final XboxButtonHelper mechanismControllerButtons = new XboxButtonHelper(controller);
+  private final XboxButtonHelper driveControllerButtons = new XboxButtonHelper(driveController);
 
   private int tick = 0;
 
@@ -152,12 +152,10 @@ public class Robot extends TimedRobot {
   public static EditableParameter armCurrentLimit = new EditableParameter(tab, "Arm Current Limit", CurrentLimits.ARM_LIMIT);
   public static EditableParameter stepSizeDegrees = new EditableParameter(tab, "Step Size Degrees", CalibrateArm.STEP_SIZE_DEGREES);
 
-  public static EditableParameter velocityP = new EditableParameter(tab, "VelocityP", DriveConstants.kVelocityP);
-  public static EditableParameter velocityI = new EditableParameter(tab, "VelocityI", DriveConstants.kVelocityI);
-  public static EditableParameter velocityD = new EditableParameter(tab, "VelocityD", DriveConstants.kVelocityD);
-  public static EditableParameter velocityFF = new EditableParameter(tab, "VelocityFF", DriveConstants.kVelocityFF);
+  public static EditableParameter driveAveragingCoeff = new EditableParameter(tab, "Speed Coeff", DriveConstants.kSpeedAveragingCoeff);
+  public static EditableParameter turnAveragingCoeff = new EditableParameter(tab, "Turn Coeff", DriveConstants.kTurnAveragingCoeff);
 
-  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.04);
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.05);
 
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
 
@@ -230,7 +228,10 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     drive.updateOdometry();
-    drive.updatePIDControl();
+    drive.updateVelocityControl();
+
+    drive.setDriveAveragingCoeff(driveAveragingCoeff.getValue());
+    drive.setTurnAveragingCoeff(turnAveragingCoeff.getValue());
 
     Constants.CurrentLimits.ARM_LIMIT = armCurrentLimit.getValue();
     CalibrateArm.STEP_SIZE_DEGREES = stepSizeDegrees.getValue();
@@ -244,11 +245,6 @@ public class Robot extends TimedRobot {
     Constants.DriveConstants.kBalanceP = kBalanceP.getDouble(0);
     Constants.DriveConstants.kBalanceI = kBalanceI.getDouble(0);
     Constants.DriveConstants.kBalanceD = kBalanceD.getDouble(0);
-
-    Constants.DriveConstants.kVelocityP = velocityP.getValue();
-    Constants.DriveConstants.kVelocityI = velocityI.getValue();
-    Constants.DriveConstants.kVelocityD = velocityD.getValue();
-    Constants.DriveConstants.kVelocityFF = velocityFF.getValue();
 
     turnPid.setP(kTurnP.getDouble(0));
     turnPid.setI(kTurnI.getDouble(0));
@@ -412,7 +408,7 @@ public class Robot extends TimedRobot {
       scoreCubeHighGoal,
       // new MoveDistance(-2.7, drive)
       //   .withTimeout(5),
-      new MoveDistance(-4.5, drive)
+      new MoveDistance(-4, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive).withTimeout(9)
@@ -453,10 +449,12 @@ public class Robot extends TimedRobot {
   boolean teleopTargetingAngle = false;
   double lastPov = -1;
 
+
   @Override
   public void teleopInit() {
-    drive.disablePIDControl();
+    // drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kCoast);
+    drive.setControlMode(ControlMode.VELOCITY);
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
     drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
     teleopTargetAngle = drive.getHeading();
@@ -557,11 +555,13 @@ public class Robot extends TimedRobot {
       //System.out.println("Absolute Turning: current: " + drive.getHeading() + " deg; target: " + teleopTargetAngle + " deg");
     }
 
-    if (driveController.getBackButtonPressed()) {
-      drive.setControlMode(drive.getControlMode() == ControlMode.VOLTAGE 
-        ? ControlMode.VELOCITY 
-        : ControlMode.VOLTAGE
-      );
+    if (driveControllerButtons.getXButtonPressed()) {
+      ControlMode newControlMode =
+        drive.getControlMode() == ControlMode.VOLTAGE 
+          ? ControlMode.VELOCITY 
+          : ControlMode.VOLTAGE;
+      System.out.println("Robot: Switching drive mode from " + drive.getControlMode().name() + " to " + newControlMode.name());
+      drive.setControlMode(newControlMode);
     }
     if(driveController.getStartButton())
         armSubSys.calibrate();
