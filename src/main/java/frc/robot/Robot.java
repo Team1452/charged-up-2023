@@ -458,6 +458,8 @@ public class Robot extends TimedRobot {
 
   boolean turnIsAbsolute = false;
 
+  int intakeDirection = 0;
+
   private double velocityCurve(double x, double deadzone, double r, double z, double m) {
     double mag = Utils.deadzone(x, deadzone);
     double value = (Math.pow(mag - r, 5) * z) + m;
@@ -540,17 +542,17 @@ public class Robot extends TimedRobot {
       turn = jy < 1e-6 ? 0 : Math.copySign(0.05, jy);
     drive.differentialDrive(speed, turn);
 
-    if (controller.getXButtonPressed()) {
-      if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
+    //if (controller.getXButtonPressed()) {
+      //if (scheduledCommand != null && scheduledCommand.isScheduled()) scheduledCommand.cancel();
 
-      scheduledCommand = new SequentialCommandGroup(
-        new TurnToAngle(90, drive),
-        new MoveDistance(1, drive),
-        new TurnToAngle(0, drive)
-      );
+    //  scheduledCommand = new SequentialCommandGroup(
+    //    new TurnToAngle(90, drive),
+    //    new MoveDistance(1, drive),
+    //    new TurnToAngle(0, drive)
+    //  );
 
-      scheduledCommand.schedule();
-    }
+    //  scheduledCommand.schedule();
+    //}
 
     // Thumb button on top of joystick
     // if (driveController.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
@@ -562,9 +564,9 @@ public class Robot extends TimedRobot {
     // if (controller.getPOV() == 90) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM);
     // if (controller.getPOV() == 270) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM);
 
-    if (mechanismControllerButtons.getXButtonPressed()) {
-      armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE);
-    }
+    //if (mechanismControllerButtons.getXButtonPressed()) {
+    //  armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE);
+    //}
 
     // TODO: Move this to separate helper class
     long time = preciseLinearToggleWidget.getLastChange();
@@ -607,7 +609,6 @@ public class Robot extends TimedRobot {
     // TODO: Figure out expected current empty and w/ object and use
     // properly. Disable motor if current goes above and update dashboard
     // if (intake.getOutputCurrent() < currentLimitClaw.getValue()) {
-      int intakeDirection = 0;
       if (controller.getYButton()) {
         intakeDirection = 1;
       } else if (controller.getAButton()) {

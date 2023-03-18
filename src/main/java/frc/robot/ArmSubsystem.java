@@ -260,7 +260,7 @@ public class ArmSubsystem {
 
     public void setArmPosition(double armPosition) {
         if (calibrationCommand.isActive()) return;
-        // this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
         this.armPosition = armPosition;
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
     }
