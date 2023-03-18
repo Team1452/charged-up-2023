@@ -16,7 +16,7 @@ public class Constants {
 
     public static class DriveConstants {
         public static double kMaxVoltage = 0.8;
-        public static final double kMaxDriveVoltage = 1.0;
+        public static final double kMaxDriveVoltage = 0.8;
         public static final double kMaxAutonVoltage = 0.2;
         public static final double kMaxSpeed = Units.feetToMeters(10); // 10 ft/s
         public static final double kMaxAngularSpeed = 2 * Math.PI; // one rotation per second
@@ -83,8 +83,8 @@ public class Constants {
         public static double HIGH_CUBE_NODE_ARM_ANGLE = 71.36;
 
         // public static double DRIVER_STATION_EXTENDER_ROTATIONS = 29.64;
-        public static double DRIVER_STATION_EXTENDER_ROTATIONS = 2*29.64;
-        public static double DRIVER_STATION_ARM_ANGLE = 73.54;
+        public static double DOUBLE_STATION_EXTENDER_ROTATIONS = 2*29.64;
+        public static double DOUBLE_STATION_ARM_ANGLE = 68;
 
 
         /*

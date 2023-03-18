@@ -14,11 +14,13 @@ public class SetArm extends CommandBase {
 
     @Override
     public void initialize() {
+        System.out.printf("SetArm: Setting arm to %.3f\n", armPosition);
         arm.setArmPosition(armPosition);
     }
 
     @Override
     public boolean isFinished() {
-        return Math.abs(arm.getArmEncoder().getPosition() - armPosition) < 1;
+        // return Math.abs(arm.getArmEncoder().getPosition() - armPosition) < 0.1;
+        return false;
     }
 }

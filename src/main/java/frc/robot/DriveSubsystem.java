@@ -229,18 +229,19 @@ public class DriveSubsystem extends SubsystemBase {
   private void differentialDriveVoltage(double speed, double turn) {
     // Positive turn turns right, negative turns left
     // System.out.printf("DriveSubsystem: Max voltage is " + maxVoltage + "; ");
-    if(speed > 0.6){
-      for(CANSparkMax m : leftMotors)
-        m.setIdleMode(IdleMode.kCoast);
-      for(CANSparkMax m : rightMotors)
-        m.setIdleMode(IdleMode.kCoast);
 
-    }else{
-      for(CANSparkMax m : leftMotors)
-        m.setIdleMode(IdleMode.kBrake);
-      for(CANSparkMax m : rightMotors)
-        m.setIdleMode(IdleMode.kBrake);
-    }
+    // if(speed > 0.6){
+    //   for(CANSparkMax m : leftMotors)
+    //     m.setIdleMode(IdleMode.kCoast);
+    //   for(CANSparkMax m : rightMotors)
+    //     m.setIdleMode(IdleMode.kCoast);
+
+    // }else{
+    //   for(CANSparkMax m : leftMotors)
+    //     m.setIdleMode(IdleMode.kBrake);
+    //   for(CANSparkMax m : rightMotors)
+    //     m.setIdleMode(IdleMode.kBrake);
+    // }
 
     double leftTargetVoltage = Utils.limitMagnitude(speed + turn, maxVoltage);
     double rightTargetVoltage = Utils.limitMagnitude(speed - turn, maxVoltage);

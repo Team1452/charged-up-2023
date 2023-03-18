@@ -50,6 +50,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Joystick;
@@ -72,13 +73,16 @@ import frc.robot.ArmSubsystem.ArmTargetChoice;
 import frc.robot.Constants.ArmConstants;
 import frc.robot.Constants.CurrentLimits;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.ScoringConstants;
 import frc.robot.DriveSubsystem.ControlMode;
 import frc.robot.commands.Balance;
 import frc.robot.commands.CalibrateArm;
 import frc.robot.commands.MoveDistance;
 import frc.robot.commands.SetArm;
 import frc.robot.commands.SetArmAndExtender;
+import frc.robot.commands.SetExtender;
 import frc.robot.commands.DynamicCommand;
+import frc.robot.commands.Lambda;
 import frc.robot.commands.TurnToAngle;
 import frc.robot.util.EditableParameter;
 import frc.robot.util.Utils;
@@ -88,6 +92,7 @@ import kotlin.UByteArrayKt;
 import frc.robot.commands.CenterPhotonVisionTarget;
 
 public class Robot extends TimedRobot {
+  private DigitalInput armLimitSwitch = new DigitalInput(0);
   private final DoubleSolenoid rightSolenoid = new DoubleSolenoid(
       PneumaticsModuleType.CTREPCM, RobotMap.SOLENOID_1[0], RobotMap.SOLENOID_1[1]);
   private final DoubleSolenoid leftSolenoid = new DoubleSolenoid(
@@ -118,7 +123,7 @@ public class Robot extends TimedRobot {
 
   private int tick = 0;
 
-  private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.MOTOR_EXTEND);
+  private final ArmSubsystem armSubSys = new ArmSubsystem(RobotMap.MOTOR_ARM, RobotMap.MOTOR_EXTEND, armLimitSwitch);
   // private ArmSubsystem.ArmTargetChoice target = ArmTargetChoice.MANUAL_CONTROL;
   // private ArmSubsystem.ArmTargetChoice[] targetModes = {
   //     ArmSubsystem.ArmTargetChoice.MANUAL_CONTROL,
@@ -185,7 +190,7 @@ public class Robot extends TimedRobot {
 
   public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.7);
 
-  public static DashboardServer server = new DashboardServer();
+  // public static DashboardServer server = new DashboardServer();
 
   @Override
   public void robotInit() {
@@ -249,7 +254,7 @@ public class Robot extends TimedRobot {
     turnPid.setI(kTurnI.getDouble(0));
     turnPid.setD(kTurnD.getDouble(0));
 
-    drive.setMaxVoltage(kMaxVoltage.getDouble(0));
+    // drive.setMaxVoltage(kMaxVoltage.getDouble(0));
     drive.setMaxSpeed(kMaxSpeed.getDouble(0));
 
     Pose2d pose = drive.getPoseWithVisionMeasurements();
@@ -367,9 +372,23 @@ public class Robot extends TimedRobot {
     // new Balance(drive).withTimeout(9)
     // ).andThen(() -> drive.holdPosition());
 
+    SequentialCommandGroup scoreCubeHighGoal = new SequentialCommandGroup(
+      new SetArm(armSubSys, ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE)
+        .withTimeout(0.5),
+      new SetExtender(armSubSys, ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS)
+        .withTimeout(0.5),
+      new Lambda(() -> intake.set(-0.7))
+        .withTimeout(0.3)
+        .andThen(() -> intake.set(0)),
+      new SetExtender(armSubSys, 0)
+        .withTimeout(0.5),
+      new SetArm(armSubSys, 0)
+        .withTimeout(0.5)
+    );
+
     SequentialCommandGroup flipConeAndExitCommunityAndBackUpAndBalance = new SequentialCommandGroup(
         flipAndPushBackCone,
-        new MoveDistance(2.5, drive)
+        new MoveDistance(2.4, drive)
             .withTimeout(5),
         new MoveDistance(-2, drive)
             .withPitchExitThreshold(10)
@@ -381,9 +400,19 @@ public class Robot extends TimedRobot {
       new SetArm(armSubSys, 0)
     );
 
-    SequentialCommandGroup flipConeClimbAndExit = new SequentialCommandGroup(
-      flipCone,
-      new MoveDistance(1.8, drive)
+    // SequentialCommandGroup scoreCubeClimbAndExit = new SequentialCommandGroup(
+    //   scoreCubeHighGoal,
+    //   new MoveDistance(-4.5, drive)
+    //     .withPitchExitThreshold(10)
+    //     .withTimeout(5),
+    //   new Balance(drive).withTimeout(9)
+    // ).andThen(() -> drive.holdPosition());
+
+    SequentialCommandGroup scoreCubeClimbAndExit = new SequentialCommandGroup(
+      scoreCubeHighGoal,
+      // new MoveDistance(-2.7, drive)
+      //   .withTimeout(5),
+      new MoveDistance(-4.5, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive).withTimeout(9)
@@ -391,7 +420,7 @@ public class Robot extends TimedRobot {
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());
     // auton = climbAndExit;
-    auton = flipConeClimbAndExit;
+    auton = scoreCubeClimbAndExit;
     auton.schedule();
 
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxAutonVoltage;
@@ -427,9 +456,9 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     drive.disablePIDControl();
-    drive.setIdleMode(IdleMode.kBrake);
+    drive.setIdleMode(IdleMode.kCoast);
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
-    drive.setMaxVoltage(1);
+    drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
     teleopTargetAngle = drive.getHeading();
     armSubSys.reset();
     // lastPov = joystick.getPOV();
@@ -558,11 +587,11 @@ public class Robot extends TimedRobot {
     // if (driveController.getRawButtonPressed(7)) turnIsAbsolute = !turnIsAbsolute;
     
     // TODO: Get presets to work
-    // if (controller.getPOV() == 0) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION);
-    // if (controller.getPOV() == 180) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.STOW);
+     if (controller.getPOV() == 0) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.DOUBLE_SUBSTATION);
+     if (controller.getPOV() == 180) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.STOW);
 
-    // if (controller.getPOV() == 90) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM);
-    // if (controller.getPOV() == 270) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM);
+     if (controller.getPOV() == 90) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_THREE_PLATFORM);
+     if (controller.getPOV() == 270) armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_PLATFORM);
 
     //if (mechanismControllerButtons.getXButtonPressed()) {
     //  armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE);
@@ -685,6 +714,7 @@ public class Robot extends TimedRobot {
   @Override
   public void testInit() {
     armSubSys.setIdleMode(IdleMode.kCoast);
+    drive.setIdleMode(IdleMode.kCoast);
   }
 
   boolean needsToFaceFront = false;

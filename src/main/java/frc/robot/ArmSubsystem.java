@@ -8,13 +8,16 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.Constants.CurrentLimits;
 import frc.robot.Constants.FieldConstants;
 import frc.robot.commands.CalibrateArm;
 import frc.robot.commands.CalibrateExtender;
 import frc.robot.commands.DynamicCommand;
+import frc.robot.commands.SetArm;
 import frc.robot.commands.SetArmAndExtender;
+import frc.robot.commands.SetExtender;
 public class ArmSubsystem {
     // TODO: Deprecate
     public enum ArmTargetChoice {
@@ -55,9 +58,11 @@ public class ArmSubsystem {
     private double getArmAngleRadians() {
         return armPosition/(Constants.ArmConstants.MAX_ROTATION_ROT - Constants.ArmConstants.MIN_ROTATION_ROT) * Constants.ArmConstants.RANGE_RAD + Constants.ArmConstants.START_ANGLE;
     }
-
-    public ArmSubsystem(int armID, int extenderID){
+    private DigitalInput armLimitSwitch;
+    public ArmSubsystem(int armID, int extenderID, DigitalInput armLimitSwitch){
+        this.armLimitSwitch = armLimitSwitch;
         arm = new CANSparkMax(armID, MotorType.kBrushless);
+        arm.setSmartCurrentLimit(30);
         extender = new CANSparkMax(extenderID, MotorType.kBrushless);
         arm.restoreFactoryDefaults();
         extender.restoreFactoryDefaults();
@@ -130,7 +135,9 @@ public class ArmSubsystem {
         // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL){
             extenderPosition += extenderScaleConstant*percentChange*0.01;
         // }
-        setExtenderPosition(extenderPosition + extenderScaleConstant*percentChange*0.01);
+        if (!presetCommand.isActive()) {
+            setExtenderPosition(extenderPosition + extenderScaleConstant*percentChange*0.01);
+        }
     }
 
     public void changeArmPosition(double percentChange){
@@ -138,7 +145,9 @@ public class ArmSubsystem {
         // if(percentChange > 0)
         //     targetChoice = ArmTargetChoice.MANUAL_CONTROL;
         // if (targetChoice == ArmTargetChoice.MANUAL_CONTROL) 
-        setArmPosition(armPosition + armScaleConstant*percentChange*0.01);
+        if (!presetCommand.isActive()) {
+            setArmPosition(armPosition + armScaleConstant*percentChange*0.01);
+        }
     }
 
     public void rawArmChange(double percentChange){
@@ -240,16 +249,23 @@ public class ArmSubsystem {
                 targetExtenderPosition = Constants.ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS;
                 break;
             case DOUBLE_SUBSTATION:
-                targetArmPosition = Constants.ScoringConstants.DRIVER_STATION_ARM_ANGLE;  
-                targetExtenderPosition = Constants.ScoringConstants.DRIVER_STATION_EXTENDER_ROTATIONS;
+                targetArmPosition = Constants.ScoringConstants.DOUBLE_STATION_ARM_ANGLE;  
+                targetExtenderPosition = Constants.ScoringConstants.DOUBLE_STATION_EXTENDER_ROTATIONS;
                 break;
             default:
                 break;
         }
         
-        presetCommand.scheduleNew(new SetArmAndExtender(this, targetArmPosition, targetExtenderPosition));
+        presetCommand.scheduleNew(
+            new SequentialCommandGroup(
+                new SetExtender(this, 0)
+                    .withTimeout(2),
+                new SetArm(this, targetArmPosition)
+                    .withTimeout(2)
+            )
+        );
+        // System.out.printf("ArmSubsystem: Set arm position to %.3f, extender position is %.3f\n", armPosition, extenderPosition);
 
-        System.out.printf("ArmSubsystem: Set arm position to %.3f, extender position is %.3f\n", armPosition, extenderPosition);
     }
 
     public void setExtenderPosition(double extenderPosition) {
@@ -259,8 +275,15 @@ public class ArmSubsystem {
     }
 
     public void setArmPosition(double armPosition) {
+        double prevArmPosition = this.armPosition;
         if (calibrationCommand.isActive()) return;
         this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        //if(armLimitSwitch.get() && armPosition < prevArmPosition){
+            //System.out.println("Limit Switch Pressed");
+            ////armPosition = Constants.ArmConstants.MIN_ROTATION_ROT + 1;
+            ////armPosition = prevArmPosition;
+        //}
+
         this.armPosition = armPosition;
         armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
     }

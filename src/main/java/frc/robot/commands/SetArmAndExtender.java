@@ -13,7 +13,7 @@ public class SetArmAndExtender extends CommandBase {
     double targetArmPosition, targetExtenderPosition;
     ArmSubsystem arm;
     boolean stowing = true;
-
+    int ticks = 0;
     public SetArmAndExtender(ArmSubsystem arm, double armPosition, double extenderPosition) {
         this.arm = arm;
         this.targetArmPosition = armPosition;
@@ -28,6 +28,7 @@ public class SetArmAndExtender extends CommandBase {
 
     @Override
     public void execute() {
+        ticks++;
         double armError = Math.abs(arm.getArmPosition() - targetArmPosition);
         double extenderError = Math.abs(arm.getExtenderPosition() - targetExtenderPosition);
         System.out.println("Arm error: " + armError + "; extender error: " + extenderError);
@@ -42,6 +43,6 @@ public class SetArmAndExtender extends CommandBase {
     public boolean isFinished() {
         // return Math.abs(arm.getArmEncoder().getPosition() - targetArmPosition) < ScoringConstants.ARM_TOLERANCE_DEGREES
         //     && Math.abs(arm.getExtenderEncoder().getPosition() - targetExtenderPosition) < ScoringConstants.EXTENDER_TOLERANCE_ROTATIONS;
-        return false;
+        return ticks > 500;
     }
 }
