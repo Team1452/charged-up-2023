@@ -160,6 +160,7 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   public void holdPosition() {
+    killMotors();
     for (CANSparkMax motor : leftMotors) {
       SparkMaxPIDController controller = motor.getPIDController();
       controller.setP(0.01);

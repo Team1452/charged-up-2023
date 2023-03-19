@@ -155,7 +155,7 @@ public class Robot extends TimedRobot {
   public static EditableParameter driveAveragingCoeff = new EditableParameter(tab, "Speed Coeff", DriveConstants.kSpeedAveragingCoeff);
   public static EditableParameter turnAveragingCoeff = new EditableParameter(tab, "Turn Coeff", DriveConstants.kTurnAveragingCoeff);
 
-  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.05);
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.04);
 
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
 
@@ -186,7 +186,7 @@ public class Robot extends TimedRobot {
   public static EditableParameter extenderI = new EditableParameter(tab, "ExtenderI", 0);
   public static EditableParameter extenderD = new EditableParameter(tab, "ExtenderD",0);
 
-  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.7);
+  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.4);
 
   // public static DashboardServer server = new DashboardServer();
 
@@ -368,12 +368,12 @@ public class Robot extends TimedRobot {
     // new Balance(drive).withTimeout(9)
     // ).andThen(() -> drive.holdPosition());
 
-    SequentialCommandGroup scoreCubeHighGoal = new SequentialCommandGroup(
-      new SetArm(armSubSys, ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE)
+    SequentialCommandGroup scoreCubeMidGoal = new SequentialCommandGroup(
+      new SetArm(armSubSys, ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE)
         .withTimeout(0.5),
-      new SetExtender(armSubSys, ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS)
+      new SetExtender(armSubSys, ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS)
         .withTimeout(0.5),
-      new Lambda(() -> intake.set(-0.7))
+      new Lambda(() -> intake.set(-0.2))
         .withTimeout(0.3)
         .andThen(() -> intake.set(0)),
       new SetExtender(armSubSys, 0)
@@ -405,10 +405,10 @@ public class Robot extends TimedRobot {
     // ).andThen(() -> drive.holdPosition());
 
     SequentialCommandGroup scoreCubeClimbAndExit = new SequentialCommandGroup(
-      scoreCubeHighGoal,
+      scoreCubeMidGoal,
       // new MoveDistance(-2.7, drive)
       //   .withTimeout(5),
-      new MoveDistance(-4, drive)
+      new MoveDistance(-3.5, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive).withTimeout(9)
@@ -454,7 +454,7 @@ public class Robot extends TimedRobot {
   public void teleopInit() {
     // drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kCoast);
-    drive.setControlMode(ControlMode.VELOCITY);
+    drive.setControlMode(ControlMode.VOLTAGE);
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
     drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
     teleopTargetAngle = drive.getHeading();
