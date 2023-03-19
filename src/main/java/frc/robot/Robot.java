@@ -155,7 +155,7 @@ public class Robot extends TimedRobot {
   public static EditableParameter driveAveragingCoeff = new EditableParameter(tab, "Speed Coeff", DriveConstants.kSpeedAveragingCoeff);
   public static EditableParameter turnAveragingCoeff = new EditableParameter(tab, "Turn Coeff", DriveConstants.kTurnAveragingCoeff);
 
-  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.04);
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.045);
 
   public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
 
@@ -411,7 +411,7 @@ public class Robot extends TimedRobot {
       new MoveDistance(-3.5, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
-      new Balance(drive).withTimeout(9)
+      new Balance(drive)
     ).andThen(() -> drive.holdPosition());
 
     // auton = new Balance(drive).andThen(() -> drive.holdPosition());

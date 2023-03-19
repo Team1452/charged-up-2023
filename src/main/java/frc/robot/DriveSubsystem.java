@@ -161,20 +161,20 @@ public class DriveSubsystem extends SubsystemBase {
 
   public void holdPosition() {
     killMotors();
-    for (CANSparkMax motor : leftMotors) {
-      SparkMaxPIDController controller = motor.getPIDController();
-      controller.setP(0.01);
-      controller.setI(0);
-      controller.setD(0);
-      controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
-    }
-    for (CANSparkMax motor : rightMotors) {
-      SparkMaxPIDController controller = motor.getPIDController();
-      controller.setP(0.01);
-      controller.setI(0);
-      controller.setD(0);
-      controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
-    }
+    // for (CANSparkMax motor : leftMotors) {
+    //   SparkMaxPIDController controller = motor.getPIDController();
+    //   controller.setP(0.01);
+    //   controller.setI(0);
+    //   controller.setD(0);
+    //   controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
+    // }
+    // for (CANSparkMax motor : rightMotors) {
+    //   SparkMaxPIDController controller = motor.getPIDController();
+    //   controller.setP(0.01);
+    //   controller.setI(0);
+    //   controller.setD(0);
+    //   controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
+    // }
   }
 
   private void setVelocities(CANSparkMax[] motors, double velocity) {
