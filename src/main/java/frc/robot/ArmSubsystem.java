@@ -278,14 +278,13 @@ public class ArmSubsystem {
         double prevArmPosition = this.armPosition;
         if (calibrationCommand.isActive()) return;
         this.armPosition = MathUtil.clamp(armPosition, Constants.ArmConstants.MIN_ROTATION_ROT, Constants.ArmConstants.MAX_ROTATION_ROT);
+        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
+
         //if(armLimitSwitch.get() && armPosition < prevArmPosition){
             //System.out.println("Limit Switch Pressed");
             ////armPosition = Constants.ArmConstants.MIN_ROTATION_ROT + 1;
             ////armPosition = prevArmPosition;
         //}
-
-        this.armPosition = armPosition;
-        armPID.setReference(armPosition, CANSparkMax.ControlType.kPosition);
     }
 
     public void calibrate(){

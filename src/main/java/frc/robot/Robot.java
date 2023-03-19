@@ -141,8 +141,6 @@ public class Robot extends TimedRobot {
   private GenericEntry kBalanceP, kBalanceI, kBalanceD;
   private GenericEntry kTurnP, kTurnI, kTurnD;
   private GenericEntry kMaxSpeed, kMaxVoltage;
-  
-  private GenericEntry preciseLinearToggleWidget = tab.add("Precision Toggle", false).getEntry();
 
   private Balance balanceCommand;
 
@@ -152,41 +150,41 @@ public class Robot extends TimedRobot {
   public static EditableParameter armCurrentLimit = new EditableParameter(tab, "Arm Current Limit", CurrentLimits.ARM_LIMIT);
   public static EditableParameter stepSizeDegrees = new EditableParameter(tab, "Step Size Degrees", CalibrateArm.STEP_SIZE_DEGREES);
 
-  public static EditableParameter driveAveragingCoeff = new EditableParameter(tab, "Speed Coeff", DriveConstants.kSpeedAveragingCoeff);
-  public static EditableParameter turnAveragingCoeff = new EditableParameter(tab, "Turn Coeff", DriveConstants.kTurnAveragingCoeff);
+  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.04);
 
-  public static EditableParameter kA = new EditableParameter(tab, "Decay Exponential", -0.045);
+  public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0, false);
 
-  public static EditableParameter turnIsLinearThreshold = new EditableParameter(tab, "Turn Is Linear Threshold", 0.0);
+  public static EditableParameter turnCurveScalingFactor = new EditableParameter(tab, "Turn Scaling", 0.4, false);
+  public static EditableParameter velocityCurveScalingFactor = new EditableParameter(tab, "Velocity Scaling", 1, false);
+  public static EditableParameter turnCurveExponent = new EditableParameter(tab, "Turn Exponent", 2, false);
+  public static EditableParameter velocityCurveExponent = new EditableParameter(tab, "Velocity Exponent", 2, false);
 
-  public static EditableParameter turnCurveScalingFactor = new EditableParameter(tab, "Turn Scaling", 0.4);
-  public static EditableParameter velocityCurveScalingFactor = new EditableParameter(tab, "Velocity Scaling", 1);
-  public static EditableParameter turnCurveExponent = new EditableParameter(tab, "Turn Exponent", 2);
-  public static EditableParameter velocityCurveExponent = new EditableParameter(tab, "Velocity Exponent", 2);
+  public static EditableParameter speedDeadzone = new EditableParameter(tab, "Speed Deadzone", 0.05, false);
+  public static EditableParameter armScale = new EditableParameter(tab, "Arm Scale", 1, false);
+  public static EditableParameter armFineScale = new EditableParameter(tab, "Arm Fine Scale", 0.5, false);
+  public static EditableParameter r = new EditableParameter(tab, "r", 0.45, false);
+  public static EditableParameter z = new EditableParameter(tab, "z", 16, false);
+  public static EditableParameter m = new EditableParameter(tab, "m", .3, false);
 
-  public static EditableParameter speedDeadzone = new EditableParameter(tab, "Speed Deadzone", 0.05);
-  public static EditableParameter armScale = new EditableParameter(tab, "Arm Scale", 1);
-  public static EditableParameter armFineScale = new EditableParameter(tab, "Arm Fine Scale", 0.5);
-  public static EditableParameter r = new EditableParameter(tab, "r", 0.45);
-  public static EditableParameter z = new EditableParameter(tab, "z", 16);
-  public static EditableParameter m = new EditableParameter(tab, "m", .3);
+  public static EditableParameter currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 80, false);
 
-  public static EditableParameter  currentLimitClaw = new EditableParameter(tab, "Current Limit Claw", 80, false);
+  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.01, false);
+  public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2, false);
+  public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1, false);
 
-  public static EditableParameter preciseLinearModeCoeff = new EditableParameter(tab, "Precision Mode Linear Coeff", 0.2);
-  public static EditableParameter turnDeadzone = new EditableParameter(tab, "Turn Deadzone", 0.01);
-  public static EditableParameter turnScale = new EditableParameter(tab, "Default Turn Scale", 0.2);
-  public static EditableParameter fineScale = new EditableParameter(tab, "Fine Control Turn Scale", 0.1);
+  public static EditableParameter ArmP = new EditableParameter(tab, "ArmP", 0.12, false);
+  public static EditableParameter ArmI= new EditableParameter(tab, "ArmI", 0, false);
+  public static EditableParameter ArmD = new EditableParameter(tab, "ArmD",0, false);
 
-  public static EditableParameter ArmP = new EditableParameter(tab, "ArmP", 0.12);
-  public static EditableParameter ArmI= new EditableParameter(tab, "ArmI", 0);
-  public static EditableParameter ArmD = new EditableParameter(tab, "ArmD",0);
+  public static EditableParameter extenderP = new EditableParameter(tab, "ExtenderP", 0.3, false);
+  public static EditableParameter extenderI = new EditableParameter(tab, "ExtenderI", 0, false);
+  public static EditableParameter extenderD = new EditableParameter(tab, "ExtenderD",0, false);
 
-  public static EditableParameter extenderP = new EditableParameter(tab, "ExtenderP", 0.3);
-  public static EditableParameter extenderI = new EditableParameter(tab, "ExtenderI", 0);
-  public static EditableParameter extenderD = new EditableParameter(tab, "ExtenderD",0);
+  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.4, false);
 
-  public static EditableParameter intakeSpeed = new EditableParameter(tab, "Intake Speed", 0.4);
+  public static EditableParameter driveAveragingCoeff = new EditableParameter(tab, "Drive Averaging Coeff", DriveSubsystem.driveAveragingCoeff);
+  public static EditableParameter turnAveragingCoeff = new EditableParameter(tab, "Turn Averaging Coeff", DriveSubsystem.turnAveragingCoeff);
+  public static EditableParameter driveTurnCoeffThreshold = new EditableParameter(tab, "Drive Turn Threshold", DriveSubsystem.driveTurnCoeffThreshold);
 
   // public static DashboardServer server = new DashboardServer();
 
@@ -230,8 +228,9 @@ public class Robot extends TimedRobot {
     drive.updateOdometry();
     drive.updateVelocityControl();
 
-    drive.setDriveAveragingCoeff(driveAveragingCoeff.getValue());
-    drive.setTurnAveragingCoeff(turnAveragingCoeff.getValue());
+    DriveSubsystem.driveAveragingCoeff = driveAveragingCoeff.getValue();
+    DriveSubsystem.turnAveragingCoeff = turnAveragingCoeff.getValue();
+    DriveSubsystem.driveTurnCoeffThreshold = driveTurnCoeffThreshold.getValue();
 
     Constants.CurrentLimits.ARM_LIMIT = armCurrentLimit.getValue();
     CalibrateArm.STEP_SIZE_DEGREES = stepSizeDegrees.getValue();
@@ -368,10 +367,10 @@ public class Robot extends TimedRobot {
     // new Balance(drive).withTimeout(9)
     // ).andThen(() -> drive.holdPosition());
 
-    SequentialCommandGroup scoreCubeMidGoal = new SequentialCommandGroup(
-      new SetArm(armSubSys, ScoringConstants.LOW_CUBE_NODE_ARM_ANGLE)
+    SequentialCommandGroup scoreCubeHighGoal = new SequentialCommandGroup(
+      new SetArm(armSubSys, ScoringConstants.HIGH_CUBE_NODE_ARM_ANGLE)
         .withTimeout(0.5),
-      new SetExtender(armSubSys, ScoringConstants.LOW_CUBE_NODE_EXTENDER_ROTATIONS)
+      new SetExtender(armSubSys, ScoringConstants.HIGH_CUBE_NODE_EXTENDER_ROTATIONS)
         .withTimeout(0.5),
       new Lambda(() -> intake.set(-0.2))
         .withTimeout(0.3)
@@ -405,10 +404,10 @@ public class Robot extends TimedRobot {
     // ).andThen(() -> drive.holdPosition());
 
     SequentialCommandGroup scoreCubeClimbAndExit = new SequentialCommandGroup(
-      scoreCubeMidGoal,
+      scoreCubeHighGoal,
       // new MoveDistance(-2.7, drive)
       //   .withTimeout(5),
-      new MoveDistance(-3.5, drive)
+      new MoveDistance(-3.3, drive)
         .withPitchExitThreshold(10)
         .withTimeout(5),
       new Balance(drive)
@@ -454,7 +453,7 @@ public class Robot extends TimedRobot {
   public void teleopInit() {
     // drive.disablePIDControl();
     drive.setIdleMode(IdleMode.kCoast);
-    drive.setControlMode(ControlMode.VOLTAGE);
+    // drive.setControlMode(ControlMode.VOLTAGE);
     Constants.DriveConstants.kMaxVoltage = Constants.DriveConstants.kMaxDriveVoltage;
     drive.setMaxVoltage(Constants.DriveConstants.kMaxVoltage);
     teleopTargetAngle = drive.getHeading();
@@ -502,9 +501,6 @@ public class Robot extends TimedRobot {
   //  double value = scale*Math.pow(mag, factor);
   //  return Math.copySign(value, x);
   //}
-  boolean preciseLinearToggle = false; // TODO: Move this to separate class
-  long preciseLinearToggleLastChangedTime = 0; // TODO: This is terrible
-
   DynamicCommand presetCommand = new DynamicCommand();
 
   @Override
@@ -524,9 +520,7 @@ public class Robot extends TimedRobot {
     double turnScaleValue = turnScale.getValue();
     double turnDeadzoneValue = turnDeadzone.getValue();
     
-    double speed = preciseLinearToggle
-      ? preciseLinearModeCoeff.getValue() * Utils.deadzone(jy, speedDeadzoneValue)
-      : velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
+    double speed = velocityCurve(jy, speedDeadzoneValue, rValue, zValue, mValue);
     
     double turn;
     double turnFactor = 5;
@@ -534,8 +528,6 @@ public class Robot extends TimedRobot {
     if (Math.abs(speed) < turnIsLinearThreshold.getValue()) {
       // TODO: Move to function
       turn = Utils.deadzone(jx, turnDeadzoneValue);
-    } else if (preciseLinearToggle) {
-      turn = preciseLinearModeCoeff.getValue() * Utils.deadzone(jx, turnDeadzoneValue);
     } else {
       if (driveController.getLeftTriggerAxis() < 0.5) {
         turn = turnCurve(jx, turnDeadzoneValue, turnScaleValue, turnFactor);
@@ -597,16 +589,6 @@ public class Robot extends TimedRobot {
     //  armSubSys.setPreset(ArmSubsystem.ArmTargetChoice.LEVEL_TWO_POLE);
     //}
 
-    // TODO: Move this to separate helper class
-    long time = preciseLinearToggleWidget.getLastChange();
-    if (time != preciseLinearToggleLastChangedTime) {
-      preciseLinearToggleLastChangedTime = time;
-      preciseLinearToggle = preciseLinearToggleWidget.getBoolean(false);
-    } else if (driveController.getLeftStickButtonPressed() || controller.getLeftStickButtonPressed()) {
-      preciseLinearToggle = !preciseLinearToggle;
-      preciseLinearToggleWidget.setBoolean(preciseLinearToggle);
-    }
-
     // armSubSys.setTargetMode(target);
 
     if (controller.getRawButton(6)) {
@@ -631,7 +613,6 @@ public class Robot extends TimedRobot {
     if(controller.getAButton())
       armScaleValue = armFineScale.getValue();
     armSubSys.changeArmPosition((controller.getRightTriggerAxis() - controller.getLeftTriggerAxis())*armScaleValue);
-    System.out.printf("ArmSubsystem: Arm current is at: %.3f amps\n", armSubSys.getArmCurrent());
 
     // Intake    
     

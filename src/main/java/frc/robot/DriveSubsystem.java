@@ -71,23 +71,16 @@ public class DriveSubsystem extends SubsystemBase {
   private double leftTargetVoltage = 0;
   private double rightTargetVoltage = 0;
 
-  private double driveAveragingCoeff = 0.05;
-  private double turnAveragingCoeff = 0.5;
+  public static double driveAveragingCoeff = 0.05;
+  public static double turnAveragingCoeff = 1.0;
+  public static double driveTurnCoeffThreshold = 0.5;
 
   public enum ControlMode {
     VOLTAGE,
     VELOCITY
   }
 
-  private ControlMode controlMode = ControlMode.VOLTAGE;
-
-  public void setDriveAveragingCoeff(double averagingCoeff) {
-      this.driveAveragingCoeff = averagingCoeff;
-  }
-
-  public void setTurnAveragingCoeff(double averagingCoeff) {
-      this.turnAveragingCoeff = averagingCoeff;
-  }
+  private ControlMode controlMode = ControlMode.VELOCITY;
 
   public ControlMode getControlMode() {
       return controlMode;
@@ -321,7 +314,7 @@ public class DriveSubsystem extends SubsystemBase {
   public void updateVelocityControl() {
     if (controlMode == ControlMode.VELOCITY) {
       double averagingCoeff = 
-        Math.abs(leftTargetVoltage - rightTargetVoltage)/Math.abs(leftTargetVoltage) > 0.5
+        Math.abs(leftTargetVoltage - rightTargetVoltage)/Math.abs(leftTargetVoltage) > driveTurnCoeffThreshold
           ? turnAveragingCoeff
           : driveAveragingCoeff;
 

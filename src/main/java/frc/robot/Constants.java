@@ -53,7 +53,7 @@ public class Constants {
         // public static double kBalanceI = 0.0005;
         // public static double kBalanceD = 0;
 
-        public static double kBalanceP = 0.009;
+        public static double kBalanceP = 0.008;
         public static double kBalanceI = 0.001;
         public static double kBalanceD = 0;
 
@@ -129,6 +129,7 @@ public class Constants {
     }
 
     public static class ArmConstants {
+        public static final double ARM_VERTICAL_ROTATIONS = 22.187;
         public static final double ARM_GEARING = (65/12)*50;
         public static final double ARM_HEIGHT = Units.feetToMeters(4); //height of arm pivot point
         public static final double MIN_ROTATION_RAD = 0;
