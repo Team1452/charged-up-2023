@@ -65,8 +65,12 @@ public class DriveSubsystem extends SubsystemBase {
 
   private boolean usingVelocity = false;
 
-  // private PIDController leftVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
-  // private PIDController rightVoltageController = new PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI, DriveConstants.kDriveD);
+  // private PIDController leftVoltageController = new
+  // PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI,
+  // DriveConstants.kDriveD);
+  // private PIDController rightVoltageController = new
+  // PIDController(DriveConstants.kDriveP, DriveConstants.kDriveI,
+  // DriveConstants.kDriveD);
 
   private double leftTargetVoltage = 0;
   private double rightTargetVoltage = 0;
@@ -81,24 +85,27 @@ public class DriveSubsystem extends SubsystemBase {
 
   private ControlMode controlMode = ControlMode.VOLTAGE;
 
+  private double horizontalXPosition = 0;
+  private double lastPosition = 0;
+
   public void setDriveAveragingCoeff(double averagingCoeff) {
-      this.driveAveragingCoeff = averagingCoeff;
+    this.driveAveragingCoeff = averagingCoeff;
   }
 
   public void setTurnAveragingCoeff(double averagingCoeff) {
-      this.turnAveragingCoeff = averagingCoeff;
+    this.turnAveragingCoeff = averagingCoeff;
   }
 
   public ControlMode getControlMode() {
-      return controlMode;
+    return controlMode;
   }
 
   public void setControlMode(ControlMode controlMode) {
-      this.controlMode = controlMode;
+    this.controlMode = controlMode;
   }
 
   public boolean isUsingVelocity() {
-      return usingVelocity;
+    return usingVelocity;
   }
 
   public void setMaxVoltage(double maxVoltage) {
@@ -162,18 +169,20 @@ public class DriveSubsystem extends SubsystemBase {
   public void holdPosition() {
     killMotors();
     // for (CANSparkMax motor : leftMotors) {
-    //   SparkMaxPIDController controller = motor.getPIDController();
-    //   controller.setP(0.01);
-    //   controller.setI(0);
-    //   controller.setD(0);
-    //   controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
+    // SparkMaxPIDController controller = motor.getPIDController();
+    // controller.setP(0.01);
+    // controller.setI(0);
+    // controller.setD(0);
+    // controller.setReference(motor.getEncoder().getPosition(),
+    // ControlType.kPosition);
     // }
     // for (CANSparkMax motor : rightMotors) {
-    //   SparkMaxPIDController controller = motor.getPIDController();
-    //   controller.setP(0.01);
-    //   controller.setI(0);
-    //   controller.setD(0);
-    //   controller.setReference(motor.getEncoder().getPosition(), ControlType.kPosition);
+    // SparkMaxPIDController controller = motor.getPIDController();
+    // controller.setP(0.01);
+    // controller.setI(0);
+    // controller.setD(0);
+    // controller.setReference(motor.getEncoder().getPosition(),
+    // ControlType.kPosition);
     // }
   }
 
@@ -246,16 +255,16 @@ public class DriveSubsystem extends SubsystemBase {
     // System.out.printf("DriveSubsystem: Max voltage is " + maxVoltage + "; ");
 
     // if(speed > 0.6){
-    //   for(CANSparkMax m : leftMotors)
-    //     m.setIdleMode(IdleMode.kCoast);
-    //   for(CANSparkMax m : rightMotors)
-    //     m.setIdleMode(IdleMode.kCoast);
+    // for(CANSparkMax m : leftMotors)
+    // m.setIdleMode(IdleMode.kCoast);
+    // for(CANSparkMax m : rightMotors)
+    // m.setIdleMode(IdleMode.kCoast);
 
     // }else{
-    //   for(CANSparkMax m : leftMotors)
-    //     m.setIdleMode(IdleMode.kBrake);
-    //   for(CANSparkMax m : rightMotors)
-    //     m.setIdleMode(IdleMode.kBrake);
+    // for(CANSparkMax m : leftMotors)
+    // m.setIdleMode(IdleMode.kBrake);
+    // for(CANSparkMax m : rightMotors)
+    // m.setIdleMode(IdleMode.kBrake);
     // }
 
     double leftTargetVoltage = Utils.limitMagnitude(speed + turn, maxVoltage);
@@ -320,8 +329,7 @@ public class DriveSubsystem extends SubsystemBase {
 
   public void updateVelocityControl() {
     if (controlMode == ControlMode.VELOCITY) {
-      double averagingCoeff = 
-        Math.abs(leftTargetVoltage - rightTargetVoltage)/Math.abs(leftTargetVoltage) > 0.5
+      double averagingCoeff = Math.abs(leftTargetVoltage - rightTargetVoltage) / Math.abs(leftTargetVoltage) > 0.5
           ? turnAveragingCoeff
           : driveAveragingCoeff;
 
@@ -330,8 +338,17 @@ public class DriveSubsystem extends SubsystemBase {
     }
   }
 
+  public double getHorizontalXPosition() {
+    return horizontalXPosition;
+  }
+
   /** Updates the field-relative position. */
   public void updateOdometry() {
+    double newPosition = getPosition();
+    double diff = newPosition - lastPosition;
+    horizontalXPosition += Math.cos(Math.toRadians(gyro.getPitch())) * diff;
+    lastPosition = newPosition;
+
     // Left encoder is inverted
     poseEstimator.update(
         gyro.getRotation2d(), getLeftPosition(), getRightPosition());
